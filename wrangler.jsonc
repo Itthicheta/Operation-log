@@ -1,0 +1,10 @@
+{
+  // Cloudflare project config for the Operation Log frontend.
+  // This is a static-only site: no Worker code, just the files in web/.
+  // `npx wrangler deploy` reads this and publishes web/ as the site.
+  "name": "operation-oplog",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./web"
+  }
+}
