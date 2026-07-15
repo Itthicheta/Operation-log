@@ -13,10 +13,18 @@ frontend, so it keeps working).
 (signInWithPassword / updateUser / signOut); the publishable key
 `sb_publishable_qd7z…` is embedded in the page (public by design).
 
-First-time setup has NOT been done yet — the first person to open the URL will be asked
-to create the **area manager account** (name, email, password). After logging in, the
-manager adds branches in the "Branches" tab; each branch gets one shared login
-(email + password) that the manager creates and shares with them.
+**Accounts are pre-created — there is NO self-service sign-up on the web.** People log
+in with just their **name** (the page appends `@mamapook.local` to make the account
+email; typing a full email also works). Pre-created accounts (2026-07-15):
+
+- Area manager: `mamapook`
+- Branches: `Rama9`, `Gaysorn`, `Silom`, `OCC`, `SSQ`, `ASP`
+
+Passwords are held by the owner and were shared out of band — deliberately NOT stored in
+this repo. To add/remove a branch or reset a password later, do it on the backend (seed
+SQL against `auth.users` + `auth.identities` + `operation_log.profiles`, same pattern as
+the 2026-07-15 seed) — the manager can also change their own password in-app. The
+"Branches" tab is now a read-only list.
 
 ### What it does
 
@@ -87,6 +95,19 @@ were touched. See `CLAUDE.md` for the rules.
   code in their browser and asked for Cloudflare hosting + client-side Supabase Auth.
   Split the app: frontend moved to `web/index.html` (static, for Cloudflare Pages;
   supabase-js auth), edge function `oplog-app` v2 is now JSON-API-only with CORS and
-  302-redirects browser visits to the frontend. Owner still needs to: connect the repo
-  to Cloudflare Pages (project name `mamapook-oplog`, output dir `web`), then do
-  first-time setup in the app.
+  302-redirects browser visits to the frontend.
+- **2026-07-15 (later)** — Cloudflare hosting sorted out: merged the branch into `main`,
+  added `wrangler.jsonc` (static assets = `./web`, project name `operation-oplog`).
+  Cloudflare Workers Builds now serves the site from `main`. NOTE: the live URL is a
+  `*.workers.dev` under project `operation-oplog`, not the `mamapook-oplog.pages.dev`
+  guessed earlier — `FRONTEND_URL` in the edge function and the Bitly link still need to
+  be pointed at the real URL once confirmed.
+- **2026-07-15 (later)** — Switched to pre-created accounts (owner's request: no
+  self-service sign-up). Seeded 1 area manager (`mamapook`) + 6 branches (`Rama9`,
+  `Gaysorn`, `Silom`, `OCC`, `SSQ`, `ASP`) directly into `auth.users` +
+  `auth.identities` + `operation_log.profiles` (bcrypt via `crypt`/`gen_salt`; all
+  password hashes verified). Removed the manually-created test manager
+  (`mamapook@gmail.com`). Frontend: removed the first-time-setup screen and the branch
+  create form; login now takes a plain name (appends `@mamapook.local`); Branches tab is
+  read-only. `/api/setup` and `/api/branches` endpoints remain in the edge function but
+  are no longer reachable from the UI.
