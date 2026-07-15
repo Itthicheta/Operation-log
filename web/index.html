@@ -101,22 +101,27 @@ function toast(msg) {
 const fmtDate = (d) => (d ? String(d).substring(0, 10) : "");
 const isOverdue = (d) => !!d && fmtDate(d) < new Date().toISOString().substring(0, 10);
 
-// ---------------- login / setup ----------------
+// ---------------- login ----------------
+// Accounts are pre-created (no self-service sign-up). People log in with just
+// their name; we turn it into the account's email behind the scenes. Typing a
+// full email still works, for flexibility.
 
-async function renderLogin() {
-  try {
-    const s = await (await fetch(API + "/api/setup-status")).json();
-    if (s.needsSetup) return renderSetup();
-  } catch (_) { /* fall through to the login form */ }
-  renderLoginForm();
+const LOGIN_DOMAIN = "@mamapook.local";
+
+function toLoginEmail(input) {
+  const v = input.trim();
+  if (!v) return v;
+  return v.includes("@") ? v : v.toLowerCase() + LOGIN_DOMAIN;
 }
 
-function renderLoginForm() {
+function renderLogin() {
   el("app").innerHTML = `
     <div class="login">
       <h1>Operation Log</h1>
       <form class="panel" id="loginForm">
-        <label>Email</label><input id="email" type="email" autocomplete="username" required>
+        <label>Login name</label>
+        <input id="email" autocomplete="username" autocapitalize="none" spellcheck="false"
+               required placeholder="e.g. mamapook or Rama9">
         <label>Password</label><input id="pw" type="password" autocomplete="current-password" required>
         <div class="error" id="err"></div>
         <button class="btn primary" style="width:100%" type="submit">Log in</button>
@@ -126,46 +131,11 @@ function renderLoginForm() {
     e.preventDefault();
     el("err").textContent = "";
     const { error } = await sb.auth.signInWithPassword({
-      email: el("email").value.trim(),
+      email: toLoginEmail(el("email").value),
       password: el("pw").value,
     });
-    if (error) { el("err").textContent = "Wrong email or password."; return; }
+    if (error) { el("err").textContent = "Wrong login name or password."; return; }
     loadApp();
-  };
-}
-
-function renderSetup() {
-  el("app").innerHTML = `
-    <div class="login">
-      <h1>Operation Log</h1>
-      <p style="text-align:center;color:var(--muted);font-size:14px">
-        First-time setup: create the area manager account.</p>
-      <form class="panel" id="setupForm">
-        <label>Your name</label><input id="name" required>
-        <label>Email</label><input id="email" type="email" required>
-        <label>Password (min 8 characters)</label><input id="pw" type="password" minlength="8" required>
-        <div class="error" id="err"></div>
-        <button class="btn primary" style="width:100%" type="submit">Create manager account</button>
-      </form>
-    </div>`;
-  el("setupForm").onsubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(API + "/api/setup", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: el("name").value.trim(),
-          email: el("email").value.trim(),
-          password: el("pw").value,
-        }),
-      });
-      const body = await res.json();
-      if (!res.ok) { el("err").textContent = body.error || "Setup failed."; return; }
-      toast("Account created. Please log in.");
-      renderLoginForm();
-    } catch (_) {
-      el("err").textContent = "Network error.";
-    }
   };
 }
 
@@ -273,7 +243,6 @@ function bindHandlers() {
   let f;
   if ((f = el("newProblem"))) f.onsubmit = submitNewProblem;
   if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
-  if ((f = el("newBranch"))) f.onsubmit = submitNewBranch;
 }
 
 function filtered(kind) {
@@ -350,22 +319,13 @@ function viewMgrRequests() {
 }
 
 function viewMgrBranches() {
-  const form = `
-    <form class="panel" id="newBranch"><strong>Add a branch</strong>
-      <label>Branch name</label><input id="bName" required maxlength="100">
-      <label>Login email for the branch (e.g. branchname@mamapook.local)</label>
-      <input id="bEmail" type="email" required>
-      <label>Password for the branch (min 8 characters — share it with the branch)</label>
-      <input id="bPw" type="text" minlength="8" required>
-      <div style="margin-top:12px"><button class="btn primary" type="submit">Create branch + login</button></div>
-    </form>`;
   const list = state.branches.length
     ? state.branches.map((b) => {
         const n = state.items.filter((i) => i.branch_id === b.id && i.status !== "closed").length;
         return `<div class="card"><h3>${esc(b.name)}</h3><div class="meta">${n} active item(s)</div></div>`;
       }).join("")
-    : `<div class="empty">No branches yet — add the first one above.</div>`;
-  return form + `<div class="sec">Branches (${state.branches.length})</div>` + list;
+    : `<div class="empty">No branches yet.</div>`;
+  return `<div class="sec">Branches (${state.branches.length})</div>` + list;
 }
 
 // ---------------- branch views ----------------
@@ -437,19 +397,6 @@ function submitNewRequest(e) {
       deadline: el("rDeadline").value || null,
     }),
   }).then(() => { toast("Request sent."); loadApp(); })
-    .catch((err) => toast(err.message));
-}
-
-function submitNewBranch(e) {
-  e.preventDefault();
-  api("/api/branches", {
-    method: "POST",
-    body: JSON.stringify({
-      name: el("bName").value,
-      email: el("bEmail").value.trim(),
-      password: el("bPw").value,
-    }),
-  }).then(() => { toast("Branch created."); loadApp(); })
     .catch((err) => toast(err.message));
 }
 
