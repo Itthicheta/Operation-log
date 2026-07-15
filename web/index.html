@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operation Log</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --ink:#1c2733; --muted:#68737f; --line:#e3e7ec;
+          --brand:#0f6b4f; --brand-ink:#fff; --warn:#b3261e; --amber:#8a6100; --chipbg:#eef1f4; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--ink); font-size:16px; }
+  .wrap { max-width:760px; margin:0 auto; padding:16px 12px 64px; }
+  header.app { display:flex; align-items:center; justify-content:space-between; gap:8px;
+               padding:14px 4px 10px; }
+  header.app h1 { font-size:19px; margin:0; }
+  header.app .who { font-size:13px; color:var(--muted); }
+  .tabs { display:flex; gap:6px; margin:8px 0 16px; flex-wrap:wrap; }
+  .tabs button { flex:1; min-width:130px; padding:10px 8px; border:1px solid var(--line);
+                 background:var(--card); border-radius:10px; font-size:14px; cursor:pointer; }
+  .tabs button.on { background:var(--brand); color:var(--brand-ink); border-color:var(--brand); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:14px; margin-bottom:10px; }
+  .card h3 { margin:0 0 4px; font-size:16px; }
+  .card .meta { font-size:13px; color:var(--muted); margin:2px 0 8px; }
+  .card .details { font-size:14px; white-space:pre-wrap; margin:0 0 10px; }
+  .chip { display:inline-block; font-size:12px; padding:3px 9px; border-radius:99px;
+          background:var(--chipbg); color:var(--muted); margin-right:6px; }
+  .chip.branch { background:#e7f0fb; color:#1a4e8a; }
+  .chip.warn { background:#fdecea; color:var(--warn); font-weight:600; }
+  .chip.amber { background:#fff3d6; color:var(--amber); font-weight:600; }
+  .chip.ok { background:#e6f4ec; color:var(--brand); font-weight:600; }
+  .sec { margin:22px 0 8px; font-size:14px; font-weight:700; color:var(--muted);
+         text-transform:uppercase; letter-spacing:.04em; }
+  .btn { display:inline-block; padding:10px 16px; border-radius:10px; border:1px solid var(--line);
+         background:var(--card); font-size:15px; cursor:pointer; }
+  .btn.primary { background:var(--brand); color:var(--brand-ink); border-color:var(--brand); }
+  .btn.subtle { font-size:13px; padding:7px 12px; }
+  .btn.danger { color:var(--warn); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  form.panel { background:var(--card); border:1px solid var(--line); border-radius:12px;
+               padding:14px; margin-bottom:16px; }
+  form.panel label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  form.panel input, form.panel textarea, form.panel select {
+    width:100%; padding:10px; border:1px solid var(--line); border-radius:8px;
+    font-size:15px; font-family:inherit; background:#fff; color:var(--ink); }
+  form.panel textarea { min-height:70px; }
+  .login { max-width:380px; margin:10vh auto 0; }
+  .login h1 { text-align:center; }
+  .error { color:var(--warn); font-size:14px; margin:10px 0; min-height:18px; }
+  .empty { color:var(--muted); font-size:14px; padding:8px 4px; }
+  .filter { margin-bottom:12px; }
+  .filter select { padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+                   font-size:14px; background:#fff; color:var(--ink); }
+  details.log { margin-top:10px; }
+  details.log summary { cursor:pointer; font-size:14px; color:var(--muted); padding:6px 2px; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+           background:var(--ink); color:#fff; padding:10px 18px; border-radius:10px;
+           font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div id="app" class="wrap"><p style="text-align:center;color:#68737f;margin-top:20vh">Loading…</p></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+"use strict";
+
+// --- Supabase (auth handled entirely by supabase-js: sessions, refresh, etc.)
+const SUPABASE_URL = "https://qtpwrwapbefczvqdfzes.supabase.co";
+const SUPABASE_KEY = "sb_publishable_qd7zSSED8M1BjWUql6eZXw_iRv6fKYU";
+const API = SUPABASE_URL + "/functions/v1/oplog-app";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const state = { profile: null, branches: [], items: [], tab: null, branchFilter: "all" };
+
+async function api(path, opts = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  opts.headers = Object.assign({}, opts.headers);
+  if (session) opts.headers["Authorization"] = "Bearer " + session.access_token;
+  if (opts.body) opts.headers["Content-Type"] = "application/json";
+  const res = await fetch(API + path, opts);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "Request failed.");
+  return body;
+}
+
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+const el = (id) => document.getElementById(id);
+function toast(msg) {
+  const t = el("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2600);
+}
+const fmtDate = (d) => (d ? String(d).substring(0, 10) : "");
+const isOverdue = (d) => !!d && fmtDate(d) < new Date().toISOString().substring(0, 10);
+
+// ---------------- login / setup ----------------
+
+async function renderLogin() {
+  try {
+    const s = await (await fetch(API + "/api/setup-status")).json();
+    if (s.needsSetup) return renderSetup();
+  } catch (_) { /* fall through to the login form */ }
+  renderLoginForm();
+}
+
+function renderLoginForm() {
+  el("app").innerHTML = `
+    <div class="login">
+      <h1>Operation Log</h1>
+      <form class="panel" id="loginForm">
+        <label>Email</label><input id="email" type="email" autocomplete="username" required>
+        <label>Password</label><input id="pw" type="password" autocomplete="current-password" required>
+        <div class="error" id="err"></div>
+        <button class="btn primary" style="width:100%" type="submit">Log in</button>
+      </form>
+    </div>`;
+  el("loginForm").onsubmit = async (e) => {
+    e.preventDefault();
+    el("err").textContent = "";
+    const { error } = await sb.auth.signInWithPassword({
+      email: el("email").value.trim(),
+      password: el("pw").value,
+    });
+    if (error) { el("err").textContent = "Wrong email or password."; return; }
+    loadApp();
+  };
+}
+
+function renderSetup() {
+  el("app").innerHTML = `
+    <div class="login">
+      <h1>Operation Log</h1>
+      <p style="text-align:center;color:var(--muted);font-size:14px">
+        First-time setup: create the area manager account.</p>
+      <form class="panel" id="setupForm">
+        <label>Your name</label><input id="name" required>
+        <label>Email</label><input id="email" type="email" required>
+        <label>Password (min 8 characters)</label><input id="pw" type="password" minlength="8" required>
+        <div class="error" id="err"></div>
+        <button class="btn primary" style="width:100%" type="submit">Create manager account</button>
+      </form>
+    </div>`;
+  el("setupForm").onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API + "/api/setup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: el("name").value.trim(),
+          email: el("email").value.trim(),
+          password: el("pw").value,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) { el("err").textContent = body.error || "Setup failed."; return; }
+      toast("Account created. Please log in.");
+      renderLoginForm();
+    } catch (_) {
+      el("err").textContent = "Network error.";
+    }
+  };
+}
+
+// ---------------- app shell ----------------
+
+async function loadApp() {
+  try {
+    const d = await api("/api/data");
+    state.profile = d.profile;
+    state.branches = d.branches;
+    state.items = d.items;
+    if (!state.tab) state.tab = state.profile.role === "area_manager" ? "problems" : "todo";
+    renderApp();
+  } catch (e) {
+    if (state.profile) toast(e.message);
+    else renderLogin();
+  }
+}
+
+async function changePassword() {
+  const pw = prompt("New password (min 8 characters):");
+  if (!pw) return;
+  const { error } = await sb.auth.updateUser({ password: pw });
+  toast(error ? error.message : "Password changed.");
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  state.profile = null;
+  renderLogin();
+}
+
+function setStatus(id, status) {
+  api("/api/items/" + id + "/status", { method: "POST", body: JSON.stringify({ status }) })
+    .then(loadApp)
+    .catch((e) => toast(e.message));
+}
+
+function renderApp() {
+  const p = state.profile;
+  const isMgr = p.role === "area_manager";
+  const tabs = isMgr
+    ? [["problems", "Tasks for branches"], ["requests", "Branch requests"], ["branches", "Branches"]]
+    : [["todo", "From area manager"], ["asks", "Our requests"]];
+  const views = {
+    problems: viewMgrProblems, requests: viewMgrRequests, branches: viewMgrBranches,
+    todo: viewBranchTodo, asks: viewBranchAsks,
+  };
+  el("app").innerHTML = `
+    <header class="app">
+      <div><h1>Operation Log</h1>
+        <div class="who">${esc(p.display_name)}${isMgr ? " · Area manager" : " · Branch"}</div></div>
+      <div class="row">
+        <button class="btn subtle" id="pwBtn">Password</button>
+        <button class="btn subtle" id="outBtn">Log out</button>
+      </div>
+    </header>
+    <div class="tabs">${tabs.map(([k, label]) =>
+      `<button data-tab="${k}" class="${state.tab === k ? "on" : ""}">${label}</button>`).join("")}
+    </div>
+    ${views[state.tab]()}`;
+
+  el("pwBtn").onclick = changePassword;
+  el("outBtn").onclick = logout;
+  document.querySelectorAll("[data-tab]").forEach((b) => {
+    b.onclick = () => { state.tab = b.getAttribute("data-tab"); renderApp(); };
+  });
+  bindHandlers();
+}
+
+// ---------------- shared rendering ----------------
+
+function card(item, actionsHtml, extraChips) {
+  let chips = "";
+  if (state.profile.role === "area_manager") {
+    chips += `<span class="chip branch">${esc(item.branch_name)}</span>`;
+  }
+  chips += extraChips || "";
+  if (item.deadline && item.status === "open") {
+    const od = isOverdue(item.deadline);
+    chips += `<span class="chip${od ? " warn" : ""}">Deadline ${esc(fmtDate(item.deadline))}${od ? " — overdue" : ""}</span>`;
+  }
+  let dates = "Posted " + fmtDate(item.created_at);
+  if (item.done_at) dates += " · ticked " + fmtDate(item.done_at);
+  if (item.closed_at) dates += " · closed " + fmtDate(item.closed_at);
+  return `<div class="card"><div>${chips}</div><h3>${esc(item.title)}</h3>` +
+    (item.details ? `<p class="details">${esc(item.details)}</p>` : "") +
+    `<div class="meta">${dates}</div>` +
+    (actionsHtml ? `<div class="row">${actionsHtml}</div>` : "") +
+    `</div>`;
+}
+
+const actionBtn = (item, status, label, cls) =>
+  `<button class="btn ${cls || ""}" data-act="${item.id}|${status}">${label}</button>`;
+
+function bindHandlers() {
+  document.querySelectorAll("[data-act]").forEach((b) => {
+    b.onclick = () => {
+      const [id, status] = b.getAttribute("data-act").split("|");
+      setStatus(id, status);
+    };
+  });
+  const bf = el("branchFilter");
+  if (bf) bf.onchange = () => { state.branchFilter = bf.value; renderApp(); };
+  let f;
+  if ((f = el("newProblem"))) f.onsubmit = submitNewProblem;
+  if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
+  if ((f = el("newBranch"))) f.onsubmit = submitNewBranch;
+}
+
+function filtered(kind) {
+  return state.items.filter((i) => {
+    if (i.kind !== kind) return false;
+    if (state.profile.role === "area_manager" && state.branchFilter !== "all" &&
+        i.branch_id !== state.branchFilter) return false;
+    return true;
+  });
+}
+
+function branchFilterHtml() {
+  if (state.profile.role !== "area_manager" || state.branches.length === 0) return "";
+  return `<div class="filter"><select id="branchFilter">
+    <option value="all">All branches</option>
+    ${state.branches.map((b) =>
+      `<option value="${b.id}"${state.branchFilter === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
+  </select></div>`;
+}
+
+const section = (title, items, renderOne) =>
+  `<div class="sec">${title} (${items.length})</div>` +
+  (items.length ? items.map(renderOne).join("") : `<div class="empty">Nothing here.</div>`);
+
+const logSection = (title, items, renderOne) =>
+  `<details class="log"><summary>${title} (${items.length})</summary>` +
+  (items.length ? items.map(renderOne).join("") : `<div class="empty">Empty.</div>`) +
+  `</details>`;
+
+// ---------------- manager views ----------------
+
+function viewMgrProblems() {
+  const items = filtered("problem");
+  const toCheck = items.filter((i) => i.status === "done");
+  const waiting = items.filter((i) => i.status === "open");
+  const solved = items.filter((i) => i.status === "closed");
+  const form = `
+    <form class="panel" id="newProblem"><strong>Post a problem / task for a branch</strong>
+      <label>Branch</label>
+      <select id="pBranch" required>
+        ${state.branches.length ? "" : "<option value=''>— add a branch first —</option>"}
+        ${state.branches.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+      </select>
+      <label>What is the problem / what must be done?</label><input id="pTitle" required maxlength="200">
+      <label>Details (optional)</label><textarea id="pDetails"></textarea>
+      <label>Deadline (optional)</label><input id="pDeadline" type="date">
+      <div style="margin-top:12px"><button class="btn primary" type="submit">Post to branch</button></div>
+    </form>`;
+  return form + branchFilterHtml() +
+    section("Branch ticked — re-check on your next visit", toCheck, (i) =>
+      card(i,
+        actionBtn(i, "closed", "Passed — mark solved ✓", "primary") +
+        actionBtn(i, "open", "Not fixed — send back", "danger"),
+        `<span class="chip amber">Branch says done</span>`)) +
+    section("Waiting on branch", waiting, (i) =>
+      card(i, "", `<span class="chip">Waiting</span>`)) +
+    logSection("Solved log", solved, (i) =>
+      card(i, "", `<span class="chip ok">Solved</span>`));
+}
+
+function viewMgrRequests() {
+  const items = filtered("request");
+  const open = items.filter((i) => i.status === "open");
+  const provided = items.filter((i) => i.status === "done");
+  const closed = items.filter((i) => i.status === "closed");
+  return branchFilterHtml() +
+    section("Branches are asking for", open, (i) =>
+      card(i, actionBtn(i, "done", "Provided ✓", "primary"),
+        `<span class="chip amber">Needs you</span>`)) +
+    section("Provided — waiting for branch to confirm", provided, (i) =>
+      card(i, "", `<span class="chip">Waiting for confirmation</span>`)) +
+    logSection("Completed log", closed, (i) =>
+      card(i, "", `<span class="chip ok">Completed</span>`));
+}
+
+function viewMgrBranches() {
+  const form = `
+    <form class="panel" id="newBranch"><strong>Add a branch</strong>
+      <label>Branch name</label><input id="bName" required maxlength="100">
+      <label>Login email for the branch (e.g. branchname@mamapook.local)</label>
+      <input id="bEmail" type="email" required>
+      <label>Password for the branch (min 8 characters — share it with the branch)</label>
+      <input id="bPw" type="text" minlength="8" required>
+      <div style="margin-top:12px"><button class="btn primary" type="submit">Create branch + login</button></div>
+    </form>`;
+  const list = state.branches.length
+    ? state.branches.map((b) => {
+        const n = state.items.filter((i) => i.branch_id === b.id && i.status !== "closed").length;
+        return `<div class="card"><h3>${esc(b.name)}</h3><div class="meta">${n} active item(s)</div></div>`;
+      }).join("")
+    : `<div class="empty">No branches yet — add the first one above.</div>`;
+  return form + `<div class="sec">Branches (${state.branches.length})</div>` + list;
+}
+
+// ---------------- branch views ----------------
+
+function viewBranchTodo() {
+  const items = filtered("problem");
+  const todo = items.filter((i) => i.status === "open");
+  const waiting = items.filter((i) => i.status === "done");
+  const solved = items.filter((i) => i.status === "closed");
+  return section("To do — from the area manager", todo, (i) =>
+      card(i, actionBtn(i, "done", "Done ✓", "primary"),
+        `<span class="chip warn">To do</span>`)) +
+    section("Ticked — waiting for the manager to check", waiting, (i) =>
+      card(i, "", `<span class="chip amber">Waiting for check</span>`)) +
+    logSection("Solved log", solved, (i) =>
+      card(i, "", `<span class="chip ok">Solved</span>`));
+}
+
+function viewBranchAsks() {
+  const items = filtered("request");
+  const open = items.filter((i) => i.status === "open");
+  const provided = items.filter((i) => i.status === "done");
+  const closed = items.filter((i) => i.status === "closed");
+  const form = `
+    <form class="panel" id="newRequest"><strong>Ask the area manager for something</strong>
+      <label>What do you need?</label><input id="rTitle" required maxlength="200">
+      <label>Details (optional)</label><textarea id="rDetails"></textarea>
+      <label>Needed by (optional)</label><input id="rDeadline" type="date">
+      <div style="margin-top:12px"><button class="btn primary" type="submit">Send request</button></div>
+    </form>`;
+  return form +
+    section("Waiting for the area manager", open, (i) =>
+      card(i, "", `<span class="chip">Sent</span>`)) +
+    section("Manager says provided — did you receive it?", provided, (i) =>
+      card(i,
+        actionBtn(i, "closed", "Received ✓", "primary") +
+        actionBtn(i, "open", "Not received", "danger"),
+        `<span class="chip amber">Check</span>`)) +
+    logSection("Completed log", closed, (i) =>
+      card(i, "", `<span class="chip ok">Completed</span>`));
+}
+
+// ---------------- form submits ----------------
+
+function submitNewProblem(e) {
+  e.preventDefault();
+  api("/api/items", {
+    method: "POST",
+    body: JSON.stringify({
+      kind: "problem",
+      branch_id: el("pBranch").value,
+      title: el("pTitle").value,
+      details: el("pDetails").value,
+      deadline: el("pDeadline").value || null,
+    }),
+  }).then(() => { toast("Posted to the branch."); loadApp(); })
+    .catch((err) => toast(err.message));
+}
+
+function submitNewRequest(e) {
+  e.preventDefault();
+  api("/api/items", {
+    method: "POST",
+    body: JSON.stringify({
+      kind: "request",
+      branch_id: state.profile.branch_id,
+      title: el("rTitle").value,
+      details: el("rDetails").value,
+      deadline: el("rDeadline").value || null,
+    }),
+  }).then(() => { toast("Request sent."); loadApp(); })
+    .catch((err) => toast(err.message));
+}
+
+function submitNewBranch(e) {
+  e.preventDefault();
+  api("/api/branches", {
+    method: "POST",
+    body: JSON.stringify({
+      name: el("bName").value,
+      email: el("bEmail").value.trim(),
+      password: el("bPw").value,
+    }),
+  }).then(() => { toast("Branch created."); loadApp(); })
+    .catch((err) => toast(err.message));
+}
+
+// ---------------- boot ----------------
+
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) loadApp();
+  else renderLogin();
+});
+</script>
+</body>
+</html>

@@ -2,8 +2,16 @@
 
 ## Current state (2026-07-15)
 
-**The app is live:** https://qtpwrwapbefczvqdfzes.supabase.co/functions/v1/oplog-app
-(short link for sharing with branches: https://bit.ly/3STWZWi)
+**Frontend:** static single page in `web/index.html`, to be hosted on **Cloudflare
+Pages** connected to this GitHub repo (expected URL: https://mamapook-oplog.pages.dev —
+if the Pages project ends up with a different name, update `FRONTEND_URL` in the edge
+function and the Bitly link). Short link for sharing with branches:
+https://bit.ly/3STWZWi (points at the edge function, which 302-redirects to the
+frontend, so it keeps working).
+
+**Login** is standard Supabase Auth done client-side with supabase-js
+(signInWithPassword / updateUser / signOut); the publishable key
+`sb_publishable_qd7z…` is embedded in the page (public by design).
 
 First-time setup has NOT been done yet — the first person to open the URL will be asked
 to create the **area manager account** (name, email, password). After logging in, the
@@ -32,8 +40,9 @@ only its own items; the manager sees everything.
 |---|---|
 | Database schema | `operation_log.*` only: `branches`, `profiles`, `items`, `item_events` + RLS policies and transition triggers |
 | Migration | `supabase/migrations/20260715120000_init_operation_log.sql` (applied 2026-07-15) |
-| Web app + API | Edge function `oplog-app` (`supabase/functions/oplog-app/index.ts`), verify_jwt off — it serves the public login page and enforces bearer-token auth itself on every data endpoint |
-| Auth | Supabase Auth email/password users, mapped to roles via `operation_log.profiles` |
+| Frontend | `web/index.html` — static page for Cloudflare Pages; supabase-js for auth, calls the API with the session bearer token |
+| API | Edge function `oplog-app` (`supabase/functions/oplog-app/index.ts`), JSON only + CORS; verify_jwt off because the two setup endpoints must work before any account exists — every other endpoint validates the bearer token itself |
+| Auth | Supabase Auth email/password users (client-side supabase-js), mapped to roles via `operation_log.profiles` |
 
 ### How access control works (important for future changes)
 
@@ -74,3 +83,10 @@ were touched. See `CLAUDE.md` for the rules.
   branch admin, password change). Ran 20-assertion RLS/trigger test suite (all passed,
   test data rolled back/cleaned). Created Bitly short link https://bit.ly/3STWZWi.
   First-time setup (creating the real manager account) left for the owner.
+- **2026-07-15 (later)** — Owner reported the function-served HTML displayed as raw
+  code in their browser and asked for Cloudflare hosting + client-side Supabase Auth.
+  Split the app: frontend moved to `web/index.html` (static, for Cloudflare Pages;
+  supabase-js auth), edge function `oplog-app` v2 is now JSON-API-only with CORS and
+  302-redirects browser visits to the frontend. Owner still needs to: connect the repo
+  to Cloudflare Pages (project name `mamapook-oplog`, output dir `web`), then do
+  first-time setup in the app.
