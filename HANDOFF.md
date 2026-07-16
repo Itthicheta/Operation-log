@@ -125,3 +125,9 @@ were touched. See `CLAUDE.md` for the rules.
   clickable cards opening a window ("Provided ✓" action for open requests; provided
   ones are info-only awaiting branch confirmation), completed log below. The old
   branch dropdown filter was removed.
+- **2026-07-16** — Branches tab is now a monthly dashboard: month dropdown (defaults to
+  current month, filters by item creation date, Thai/English month names via
+  toLocaleDateString), per-branch stat tables (tasks + requests × on-going/done/total,
+  where done = closed), and a grouped bar chart of monthly totals per branch (tasks
+  `#2a78d6`, requests `#008300` — CVD-validated pair; inline SVG, hover tooltips).
+  Verified with a mock-data screenshot at phone width.

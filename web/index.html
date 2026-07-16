@@ -69,6 +69,19 @@
                    font-size:14px; background:#fff; color:var(--ink); }
   details.log { margin-top:10px; }
   details.log summary { cursor:pointer; font-size:14px; color:var(--muted); padding:6px 2px; }
+  table.stat { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+  table.stat th { text-align:right; font-weight:600; color:var(--muted); padding:3px 6px;
+                  font-size:12px; }
+  table.stat th:first-child { text-align:left; }
+  table.stat td { text-align:right; padding:3px 6px; border-top:1px solid var(--line);
+                  font-variant-numeric:tabular-nums; }
+  table.stat td:first-child { text-align:left; color:var(--muted); }
+  .lg { display:inline-flex; align-items:center; font-size:13px; color:var(--muted);
+        margin-right:14px; }
+  .lg i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .tip { position:fixed; background:var(--ink); color:#fff; padding:5px 10px;
+         border-radius:8px; font-size:12px; pointer-events:none; z-index:70; display:none;
+         white-space:nowrap; }
   .overlay { position:fixed; inset:0; background:rgba(20,28,36,.5); display:flex;
              align-items:center; justify-content:center; z-index:50; padding:16px; }
   .modal { background:var(--card); border-radius:14px; padding:18px; width:100%;
@@ -87,6 +100,7 @@
 <body>
 <div id="app" class="wrap"><p style="text-align:center;color:#68737f;margin-top:20vh">กำลังโหลด…</p></div>
 <div id="toast" class="toast"></div>
+<div id="tip" class="tip"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 "use strict";
@@ -126,6 +140,7 @@ const STR = {
     needsYou: "รอคุณจัดการ", providedBtn: "จัดให้แล้ว ✓",
     waitConfirm: "จัดให้แล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
     branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
+    total: "รวม", chartTitle: "จำนวนรวมต่อสาขา",
     todoFrom: "สิ่งที่ต้องทำ — จากผู้จัดการเขต", todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
     waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ", waitCheckChip: "รอตรวจ",
     askTitle: "ขอสิ่งที่ต้องการจากผู้จัดการเขต", whatNeed: "ต้องการอะไร?",
@@ -162,6 +177,7 @@ const STR = {
     waitConfirm: "Provided — waiting for branch to confirm", waitingChip: "Waiting",
     waitingConfChip: "Waiting for confirmation",
     branchesCount: "Branches", activeItems: "active item(s)",
+    total: "Total", chartTitle: "Totals per branch",
     todoFrom: "To do — from the area manager", todoChip: "To do", doneBtn: "Done ✓",
     waitingCheck: "Ticked — waiting for the manager to check", waitCheckChip: "Waiting for check",
     askTitle: "Ask the area manager for something", whatNeed: "What do you need?",
@@ -187,6 +203,7 @@ const state = {
   mStatus: "all",   // manager problems: status tab (all | done | open)
   rBranch: "all",   // manager requests: branch tab
   rStatus: "all",   // manager requests: status tab (all | done | open)
+  statMonth: null,  // branches tab: "YYYY-MM", set to current month on first view
 };
 
 async function api(path, opts = {}) {
@@ -402,6 +419,9 @@ function bindHandlers() {
   });
   const at = el("addTaskBtn");
   if (at) at.onclick = openAddTaskModal;
+  const ms = el("monthSel");
+  if (ms) ms.onchange = () => { state.statMonth = ms.value; renderApp(); };
+  bindChartTips();
   let f;
   if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
 }
@@ -629,14 +649,125 @@ function openReqModal(id) {
   }
 }
 
+// ---------------- manager: branches dashboard ----------------
+// Month picker (default: current month, filters by item creation date),
+// per-branch stat tables (tasks + requests: on-going / done / total),
+// grouped bar chart of monthly totals at the bottom.
+// Chart series colors are a CVD-validated categorical pair.
+const CHART_TASKS = "#2a78d6";
+const CHART_REQS = "#008300";
+
+function monthOptions() {
+  const s = new Set([todayStr().substring(0, 7)]);
+  state.items.forEach((i) => s.add(String(i.created_at).substring(0, 7)));
+  return [...s].sort().reverse();
+}
+
+function monthLabel(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(
+    LANG === "th" ? "th-TH" : "en-US", { month: "long", year: "numeric" });
+}
+
 function viewMgrBranches() {
-  const list = state.branches.length
+  if (!state.statMonth) state.statMonth = todayStr().substring(0, 7);
+  const monthSel = `<div class="filter"><select id="monthSel">
+    ${monthOptions().map((m) =>
+      `<option value="${m}"${m === state.statMonth ? " selected" : ""}>${monthLabel(m)}</option>`).join("")}
+  </select></div>`;
+
+  const monthItems = state.items.filter((i) =>
+    String(i.created_at).substring(0, 7) === state.statMonth);
+
+  const statRow = (label, arr) => {
+    const ongoing = arr.filter((i) => i.status !== "closed").length;
+    const done = arr.length - ongoing;
+    return `<tr><td>${label}</td><td>${ongoing}</td><td>${done}</td><td>${arr.length}</td></tr>`;
+  };
+
+  const cards = state.branches.length
     ? state.branches.map((b) => {
-        const n = state.items.filter((i) => i.branch_id === b.id && i.status !== "closed").length;
-        return `<div class="card"><h3>${esc(b.name)}</h3><div class="meta">${n} ${t("activeItems")}</div></div>`;
+        const mine = monthItems.filter((i) => i.branch_id === b.id);
+        const tasks = mine.filter((i) => i.kind === "problem");
+        const reqs = mine.filter((i) => i.kind === "request");
+        return `<div class="card"><h3>${esc(b.name)}</h3>
+          <table class="stat">
+            <tr><th></th><th>${t("ongoing")}</th><th>${t("completedChip")}</th><th>${t("total")}</th></tr>
+            ${statRow(t("tasksForBranches"), tasks)}
+            ${statRow(t("branchRequests"), reqs)}
+          </table>
+        </div>`;
       }).join("")
     : `<div class="empty">${t("nothing")}</div>`;
-  return `<div class="sec">${t("branchesCount")} (${state.branches.length})</div>` + list;
+
+  const chartRows = state.branches.map((b) => ({
+    name: b.name,
+    tasks: monthItems.filter((i) => i.branch_id === b.id && i.kind === "problem").length,
+    reqs: monthItems.filter((i) => i.branch_id === b.id && i.kind === "request").length,
+  }));
+
+  return monthSel + cards +
+    `<div class="sec">${t("chartTitle")} — ${monthLabel(state.statMonth)}</div>
+     <div class="card">
+       <div style="margin-bottom:8px">
+         <span class="lg"><i style="background:${CHART_TASKS}"></i>${t("tasksForBranches")}</span>
+         <span class="lg"><i style="background:${CHART_REQS}"></i>${t("branchRequests")}</span>
+       </div>
+       ${barChart(chartRows)}
+     </div>`;
+}
+
+function barChart(rows) {
+  if (!rows.length) return `<div class="empty">${t("nothing")}</div>`;
+  const H = 190, padT = 12, padB = 26, padL = 26, groupW = 74, barW = 24, gap = 2;
+  const W = padL + rows.length * groupW + 10;
+  const plotH = H - padT - padB;
+  const maxV = Math.max(1, ...rows.map((r) => Math.max(r.tasks, r.reqs)));
+  const step = Math.max(1, Math.ceil(maxV / 4));
+  const top = step * Math.ceil(maxV / step);
+  const y = (v) => padT + plotH * (1 - v / top);
+
+  let grid = "";
+  for (let v = 0; v <= top; v += step) {
+    grid += `<line x1="${padL}" y1="${y(v)}" x2="${W - 4}" y2="${y(v)}"
+               stroke="#e3e7ec" stroke-width="1"/>
+             <text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end"
+               font-size="11" fill="#68737f">${v}</text>`;
+  }
+
+  const bar = (x, v, color, tip) => {
+    if (v <= 0) return "";
+    const yv = y(v), yb = y(0);
+    const r = Math.min(4, (yb - yv) / 2);
+    return `<path d="M${x},${yb} L${x},${yv + r} Q${x},${yv} ${x + r},${yv}
+        L${x + barW - r},${yv} Q${x + barW},${yv} ${x + barW},${yv + r} L${x + barW},${yb} Z"
+        fill="${color}" class="barhit" data-tip="${esc(tip)}"/>`;
+  };
+
+  let bars = "", labels = "";
+  rows.forEach((rw, i) => {
+    const x0 = padL + i * groupW + (groupW - (2 * barW + gap)) / 2;
+    bars += bar(x0, rw.tasks, CHART_TASKS, `${rw.name} · ${t("tasksForBranches")}: ${rw.tasks}`);
+    bars += bar(x0 + barW + gap, rw.reqs, CHART_REQS, `${rw.name} · ${t("branchRequests")}: ${rw.reqs}`);
+    labels += `<text x="${padL + i * groupW + groupW / 2}" y="${H - 8}" text-anchor="middle"
+                 font-size="11" fill="#68737f">${esc(rw.name)}</text>`;
+  });
+
+  return `<div><svg viewBox="0 0 ${W} ${H}"
+      style="width:100%;height:auto;display:block">
+    ${grid}
+    <line x1="${padL}" y1="${y(0)}" x2="${W - 4}" y2="${y(0)}" stroke="#68737f" stroke-width="1"/>
+    ${bars}${labels}
+  </svg></div>`;
+}
+
+function bindChartTips() {
+  const tip = el("tip");
+  document.querySelectorAll(".barhit").forEach((p) => {
+    p.addEventListener("pointerenter", () => { tip.textContent = p.getAttribute("data-tip"); tip.style.display = "block"; });
+    p.addEventListener("pointermove", (e) => { tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY - 30) + "px"; });
+    p.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  });
 }
 
 // ---------------- branch views ----------------
