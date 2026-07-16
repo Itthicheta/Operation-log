@@ -119,11 +119,11 @@ const STR = {
     postToBranch: "ส่งให้สาขา", postedToast: "ส่งให้สาขาแล้ว",
     solvedLog: "บันทึกงานที่แก้ไขแล้ว", completedLog: "บันทึกที่เสร็จสิ้น",
     solvedChip: "แก้ไขแล้ว", completedChip: "เสร็จสิ้น",
+    providedChip: "จัดให้แล้ว", providedToast: "บันทึกว่าจัดให้แล้ว",
     nothing: "ไม่มีรายการ", empty: "ว่าง",
     deadline: "กำหนด", overdue: "เกินกำหนด",
     posted: "สร้างเมื่อ", tickedOn: "ติ๊กเมื่อ", closedOn: "ปิดเมื่อ",
-    allBranches: "ทุกสาขา",
-    asking: "สิ่งที่สาขาขอมา", needsYou: "รอคุณจัดการ", providedBtn: "จัดให้แล้ว ✓",
+    needsYou: "รอคุณจัดการ", providedBtn: "จัดให้แล้ว ✓",
     waitConfirm: "จัดให้แล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
     branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
     todoFrom: "สิ่งที่ต้องทำ — จากผู้จัดการเขต", todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
@@ -154,11 +154,11 @@ const STR = {
     postToBranch: "Post to branch", postedToast: "Posted to the branch.",
     solvedLog: "Solved log", completedLog: "Completed log",
     solvedChip: "Solved", completedChip: "Completed",
+    providedChip: "Provided", providedToast: "Marked as provided.",
     nothing: "Nothing here.", empty: "Empty.",
     deadline: "Deadline", overdue: "overdue",
     posted: "Posted", tickedOn: "ticked", closedOn: "closed",
-    allBranches: "All branches",
-    asking: "Branches are asking for", needsYou: "Needs you", providedBtn: "Provided ✓",
+    needsYou: "Needs you", providedBtn: "Provided ✓",
     waitConfirm: "Provided — waiting for branch to confirm", waitingChip: "Waiting",
     waitingConfChip: "Waiting for confirmation",
     branchesCount: "Branches", activeItems: "active item(s)",
@@ -185,7 +185,8 @@ const state = {
   tab: null,
   mBranch: "all",   // manager problems: branch tab
   mStatus: "all",   // manager problems: status tab (all | done | open)
-  branchFilter: "all", // manager requests: dropdown
+  rBranch: "all",   // manager requests: branch tab
+  rStatus: "all",   // manager requests: status tab (all | done | open)
 };
 
 async function api(path, opts = {}) {
@@ -390,21 +391,19 @@ function bindHandlers() {
   document.querySelectorAll("[data-open]").forEach((b) => {
     b.onclick = () => openTaskModal(b.getAttribute("data-open"));
   });
-  const bf = el("branchFilter");
-  if (bf) bf.onchange = () => { state.branchFilter = bf.value; renderApp(); };
+  document.querySelectorAll("[data-rbtab]").forEach((b) => {
+    b.onclick = () => { state.rBranch = b.getAttribute("data-rbtab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-rstab]").forEach((b) => {
+    b.onclick = () => { state.rStatus = b.getAttribute("data-rstab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-ropen]").forEach((b) => {
+    b.onclick = () => openReqModal(b.getAttribute("data-ropen"));
+  });
   const at = el("addTaskBtn");
   if (at) at.onclick = openAddTaskModal;
   let f;
   if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
-}
-
-function branchFilterHtml() {
-  if (state.profile.role !== "area_manager" || state.branches.length === 0) return "";
-  return `<div class="filter"><select id="branchFilter">
-    <option value="all">${t("allBranches")}</option>
-    ${state.branches.map((b) =>
-      `<option value="${b.id}"${state.branchFilter === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
-  </select></div>`;
 }
 
 const section = (title, items, renderOne) =>
@@ -548,22 +547,86 @@ function submitNewProblem(e) {
 }
 
 // ---------------- manager: branch requests ----------------
+// Same format as "Tasks for branches": branch tab pills with ongoing counts,
+// then All / Provided / Needs-you status tabs, clickable cards with a window.
+// For requests the roles flip: "needs you" (open, yellow) is the manager's
+// to-do; "provided" (done, green) is waiting for the branch to confirm.
+
+function reqStatusChip(item) {
+  return item.status === "done"
+    ? `<span class="chip ok">${t("providedChip")}</span>`
+    : `<span class="chip amber">${t("needsYou")}</span>`;
+}
+
+function mgrReqCard(item) {
+  const check = item.status === "open" ? `<button class="checkbtn">✓</button>` : "";
+  return `<div class="card click" data-ropen="${item.id}">
+    <div class="cardrow">
+      <div class="grow">
+        <div><span class="chip branch">${esc(item.branch_name)}</span>${reqStatusChip(item)}${deadlineChip(item)}</div>
+        <h3>${esc(item.title)}</h3>
+        ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
+        <div class="meta">${metaLine(item)}</div>
+      </div>
+      ${check}
+    </div>
+  </div>`;
+}
 
 function viewMgrRequests() {
-  const items = state.items.filter((i) =>
-    i.kind === "request" &&
-    (state.branchFilter === "all" || i.branch_id === state.branchFilter));
-  const open = items.filter((i) => i.status === "open");
-  const provided = items.filter((i) => i.status === "done");
-  const closed = items.filter((i) => i.status === "closed");
-  return branchFilterHtml() +
-    section(t("asking"), open, (i) =>
-      card(i, actionBtn(i, "done", t("providedBtn"), "primary"),
-        `<span class="chip amber">${t("needsYou")}</span>`)) +
-    section(t("waitConfirm"), provided, (i) =>
-      card(i, "", `<span class="chip">${t("waitingConfChip")}</span>`)) +
+  const reqs = state.items.filter((i) => i.kind === "request");
+  const active = reqs.filter((i) => i.status !== "closed");
+  const cnt = (bid) => active.filter((i) => bid === "all" || i.branch_id === bid).length;
+
+  const bTabs = [["all", t("all")]].concat(state.branches.map((b) => [b.id, b.name]));
+  const branchTabsHtml = `<div class="subtabs">` + bTabs.map(([id, name]) =>
+    `<button data-rbtab="${id}" class="${state.rBranch === id ? "on" : ""}">${esc(name)} (${cnt(id)})</button>`
+  ).join("") + `</div>`;
+
+  const inBranch = active.filter((i) => state.rBranch === "all" || i.branch_id === state.rBranch);
+  const nProvided = inBranch.filter((i) => i.status === "done").length;
+  const nOpen = inBranch.filter((i) => i.status === "open").length;
+  const sTabs = [
+    ["all", t("all"), inBranch.length],
+    ["open", t("needsYou"), nOpen],
+    ["done", t("providedChip"), nProvided],
+  ];
+  const statusTabsHtml = `<div class="stabs">` + sTabs.map(([k, label, n]) =>
+    `<button data-rstab="${k}" class="${state.rStatus === k ? "on" : ""}">${label} (${n})</button>`
+  ).join("") + `</div>`;
+
+  const shown = inBranch.filter((i) => state.rStatus === "all" || i.status === state.rStatus);
+  const list = shown.length ? shown.map(mgrReqCard).join("") : `<div class="empty">${t("nothing")}</div>`;
+
+  const closed = reqs.filter((i) =>
+    i.status === "closed" && (state.rBranch === "all" || i.branch_id === state.rBranch));
+
+  return branchTabsHtml + statusTabsHtml + list +
     logSection(t("completedLog"), closed, (i) =>
       card(i, "", `<span class="chip ok">${t("completedChip")}</span>`));
+}
+
+function openReqModal(id) {
+  const i = state.items.find((x) => x.id === id);
+  if (!i) return;
+  const isOpen = i.status === "open";
+  openModal(
+    `<div>${`<span class="chip branch">${esc(i.branch_name)}</span>`}${reqStatusChip(i)}${deadlineChip(i)}</div>` +
+    `<h3>${esc(i.title)}</h3>` +
+    (i.details ? `<p class="details">${esc(i.details)}</p>` : "") +
+    `<div class="meta">${metaLine(i)}</div>` +
+    (isOpen
+      ? `<div class="row" style="margin-top:16px">
+           <button class="btn primary" id="mProvide">${t("providedBtn")}</button>
+         </div>`
+      : `<div class="meta" style="margin-top:14px">${t("waitConfirm")}</div>`)
+  );
+  if (isOpen) {
+    el("mProvide").onclick = () => {
+      closeModal();
+      setStatus(id, "done", t("providedToast"));
+    };
+  }
 }
 
 function viewMgrBranches() {
