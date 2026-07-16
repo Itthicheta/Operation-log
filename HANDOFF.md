@@ -120,3 +120,8 @@ were touched. See `CLAUDE.md` for the rules.
   bilingual with a TH/EN toggle (Thai default, stored in localStorage). Migration
   `allow_manager_close_open_problem`: manager may close a problem directly from open
   (branch still cannot) — verified with a rollback SQL test against the real roles.
+- **2026-07-16** — Branch requests tab now mirrors the tasks-for-branches format:
+  branch tab pills with ongoing counts, All / Needs-you / Provided status tabs,
+  clickable cards opening a window ("Provided ✓" action for open requests; provided
+  ones are info-only awaiting branch confirmation), completed log below. The old
+  branch dropdown filter was removed.
