@@ -138,3 +138,15 @@ were touched. See `CLAUDE.md` for the rules.
   today), status tabs All/Waiting/Provided, provided cards open a window with
   Received ✓ (confirm) / Not received (sends back). Old inline forms/sections removed;
   verified with mock-data screenshots of both tabs.
+- **2026-07-16** — Work schedule (ตารางงาน). New `operation_log.events` table
+  (migration `events`): manager-assigned events per branch with fixed categories
+  (marketing, preorder, event, repair, pest, other), date, and active/canceled status
+  (cancel keeps the row as history; trigger restricts changes to the manager). Edge
+  function v3: events included in /api/data, POST /api/events (create), POST
+  /api/events/:id/cancel. Frontend: ตารางงาน tab for both roles (manager: after
+  requests; branch: after จากผู้จัดการเขต) with month dropdown (current month default),
+  calendar/row view tabs, multi-select category filter pills (All first), manager-only
+  branch pills + add-event modal + cancel-with-confirm (in event/day windows).
+  Category colors are a CVD-validated 6-set (marketing #2a78d6, preorder #008300,
+  event #e87ba4, repair #eda100, pest #4a3aa7, other #1baf7a) always paired with the
+  category name in text. Verified with mock-data screenshots of both views.

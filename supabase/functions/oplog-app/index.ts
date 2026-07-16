@@ -125,9 +125,43 @@ async function handleApi(req: Request, path: string): Promise<Response> {
         order by
           case i.status when 'done' then 0 when 'open' then 1 else 2 end,
           i.deadline nulls last, i.created_at desc`;
-      return { branches, items };
+      const events = await tx`
+        select e.*, b.name as branch_name
+        from operation_log.events e
+        join operation_log.branches b on b.id = e.branch_id
+        order by e.event_date, e.created_at`;
+      return { branches, items, events };
     });
     return json({ profile, ...result });
+  }
+
+  if (method === "POST" && path === "/api/events") {
+    const { branch_id, category, title, details, event_date } = await req.json();
+    if (!title?.trim()) return json({ error: "A title is required." }, 400);
+    if (!event_date) return json({ error: "A date is required." }, 400);
+    try {
+      const rows = await asUser(caller.id, (tx) => tx`
+        insert into operation_log.events (branch_id, category, title, details, event_date)
+        values (${branch_id}, ${category}, ${title.trim()}, ${details || null}, ${event_date})
+        returning *`);
+      return json({ event: rows[0] });
+    } catch (e) {
+      return json({ error: pgError(e) }, 400);
+    }
+  }
+
+  const cancelMatch = path.match(/^\/api\/events\/([0-9a-f-]{36})\/cancel$/);
+  if (method === "POST" && cancelMatch) {
+    try {
+      const rows = await asUser(caller.id, (tx) => tx`
+        update operation_log.events set status = 'canceled'
+        where id = ${cancelMatch[1]}
+        returning *`);
+      if (rows.length === 0) return json({ error: "Event not found." }, 404);
+      return json({ event: rows[0] });
+    } catch (e) {
+      return json({ error: pgError(e) }, 400);
+    }
   }
 
   if (method === "POST" && path === "/api/items") {

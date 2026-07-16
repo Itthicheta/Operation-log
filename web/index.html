@@ -82,6 +82,21 @@
   .tip { position:fixed; background:var(--ink); color:#fff; padding:5px 10px;
          border-radius:8px; font-size:12px; pointer-events:none; z-index:70; display:none;
          white-space:nowrap; }
+  .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .cal .dh { text-align:center; font-size:11px; color:var(--muted); padding:2px 0 4px; }
+  .cal .day { background:var(--card); border:1px solid var(--line); border-radius:8px;
+              min-height:66px; padding:3px; overflow:hidden; }
+  .cal .day.has { cursor:pointer; }
+  .cal .day.blank { background:transparent; border-color:transparent; }
+  .cal .day.today { border-color:var(--brand); border-width:2px; }
+  .cal .dnum { font-size:11px; color:var(--muted); margin:0 0 2px 2px; }
+  .cal .ev { border-radius:4px; padding:1px 3px; margin-bottom:2px; font-size:9.5px;
+             line-height:1.35; color:var(--ink); white-space:nowrap; overflow:hidden;
+             text-overflow:ellipsis; }
+  .cal .more { font-size:9.5px; color:var(--muted); margin-left:2px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%;
+         margin-right:5px; flex:none; }
+  .chip .dot { vertical-align:-1px; }
   .overlay { position:fixed; inset:0; background:rgba(20,28,36,.5); display:flex;
              align-items:center; justify-content:center; z-index:50; padding:16px; }
   .modal { background:var(--card); border-radius:14px; padding:18px; width:100%;
@@ -141,6 +156,15 @@ const STR = {
     waitConfirm: "จัดการแล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
     branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
     total: "รวม", chartTitle: "จำนวนรวมต่อสาขา",
+    schedule: "ตารางงาน", calView: "ปฏิทิน", rowView: "รายการ",
+    addEvent: "+ เพิ่มกิจกรรม", addEventTitle: "เพิ่มกิจกรรมให้สาขา",
+    category: "หมวดหมู่", whatEvent: "กิจกรรมอะไร?", eventDate: "วันที่",
+    postEvent: "บันทึกกิจกรรม", eventAdded: "เพิ่มกิจกรรมแล้ว",
+    cancelEvent: "ยกเลิกกิจกรรม", confirmCancel: "ยืนยันยกเลิกกิจกรรมนี้?",
+    canceledToast: "ยกเลิกแล้ว",
+    cat_marketing: "Marketing", cat_preorder: "สั่งล่วงหน้า", cat_event: "Event",
+    cat_repair: "ซ่อม", cat_pest: "แมลง", cat_other: "อื่นๆ",
+    days: ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"],
     todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
     waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ",
     confirmDone: "ยืนยันว่าทำงานนี้เสร็จแล้ว?",
@@ -180,6 +204,15 @@ const STR = {
     waitingConfChip: "Waiting for confirmation",
     branchesCount: "Branches", activeItems: "active item(s)",
     total: "Total", chartTitle: "Totals per branch",
+    schedule: "Schedule", calView: "Calendar", rowView: "List",
+    addEvent: "+ Add event", addEventTitle: "Add an event for a branch",
+    category: "Category", whatEvent: "What is it?", eventDate: "Date",
+    postEvent: "Save event", eventAdded: "Event added.",
+    cancelEvent: "Cancel event", confirmCancel: "Confirm cancelling this event?",
+    canceledToast: "Event canceled.",
+    cat_marketing: "Marketing", cat_preorder: "Pre-order", cat_event: "Event",
+    cat_repair: "Repair", cat_pest: "Pest control", cat_other: "Other",
+    days: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     todoChip: "To do", doneBtn: "Done ✓",
     waitingCheck: "Ticked — waiting for the manager to check",
     confirmDone: "Confirm this task is done?",
@@ -210,6 +243,10 @@ const state = {
   statMonth: null,  // branches tab: "YYYY-MM", set to current month on first view
   bStatus: "all",   // branch problems: status tab (all | open | done)
   bqStatus: "all",  // branch requests: status tab (all | open | done)
+  schedMonth: null, // schedule: "YYYY-MM", set to current month on first view
+  schedView: "cal", // schedule: "cal" | "row"
+  schedBranch: "all", // schedule: manager's branch pill
+  schedCats: [],    // schedule: selected categories; empty = all
 };
 
 async function api(path, opts = {}) {
@@ -304,6 +341,7 @@ async function loadApp() {
     state.profile = d.profile;
     state.branches = d.branches;
     state.items = d.items;
+    state.events = d.events || [];
     if (!state.tab) state.tab = state.profile.role === "area_manager" ? "problems" : "asks";
     renderApp();
   } catch (e) {
@@ -335,11 +373,12 @@ function renderApp() {
   const p = state.profile;
   const isMgr = p.role === "area_manager";
   const tabs = isMgr
-    ? [["problems", t("tasksForBranches")], ["requests", t("branchRequests")], ["branches", t("branchesTab")]]
-    : [["asks", t("ourRequests")], ["todo", t("fromManager")]];
+    ? [["problems", t("tasksForBranches")], ["requests", t("branchRequests")],
+       ["sched", t("schedule")], ["branches", t("branchesTab")]]
+    : [["asks", t("ourRequests")], ["todo", t("fromManager")], ["sched", t("schedule")]];
   const views = {
     problems: viewMgrProblems, requests: viewMgrRequests, branches: viewMgrBranches,
-    todo: viewBranchTodo, asks: viewBranchAsks,
+    todo: viewBranchTodo, asks: viewBranchAsks, sched: viewSchedule,
   };
   el("app").innerHTML = `
     <header class="app">
@@ -425,12 +464,37 @@ function bindHandlers() {
   document.querySelectorAll("[data-bqopen]").forEach((b) => {
     b.onclick = () => openBranchReqModal(b.getAttribute("data-bqopen"));
   });
+  document.querySelectorAll("[data-vtab]").forEach((b) => {
+    b.onclick = () => { state.schedView = b.getAttribute("data-vtab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-sbtab]").forEach((b) => {
+    b.onclick = () => { state.schedBranch = b.getAttribute("data-sbtab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-ctab]").forEach((b) => {
+    b.onclick = () => {
+      const c = b.getAttribute("data-ctab");
+      if (c === "all") state.schedCats = [];
+      else if (state.schedCats.includes(c)) state.schedCats = state.schedCats.filter((x) => x !== c);
+      else state.schedCats.push(c);
+      renderApp();
+    };
+  });
+  document.querySelectorAll("[data-eopen]").forEach((b) => {
+    b.onclick = () => openEventModal(b.getAttribute("data-eopen"));
+  });
+  document.querySelectorAll("[data-dopen]").forEach((b) => {
+    b.onclick = () => openDayModal(b.getAttribute("data-dopen"));
+  });
   const at = el("addTaskBtn");
   if (at) at.onclick = openAddTaskModal;
   const ar = el("addReqBtn");
   if (ar) ar.onclick = openAddRequestModal;
+  const ae = el("addEventBtn");
+  if (ae) ae.onclick = openAddEventModal;
   const ms = el("monthSel");
   if (ms) ms.onchange = () => { state.statMonth = ms.value; renderApp(); };
+  const sms = el("schedMonthSel");
+  if (sms) sms.onchange = () => { state.schedMonth = sms.value; renderApp(); };
   bindChartTips();
 }
 
@@ -776,6 +840,233 @@ function bindChartTips() {
     p.addEventListener("pointermove", (e) => { tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY - 30) + "px"; });
     p.addEventListener("pointerleave", () => { tip.style.display = "none"; });
   });
+}
+
+// ---------------- schedule (ตารางงาน) — both roles ----------------
+// Events assigned by the area manager to branches. Month dropdown, calendar or
+// row view, category multi-select filter (colors are a CVD-validated set and
+// every color is always accompanied by the category name in text), and for the
+// manager: branch pills + add/cancel.
+
+const CATS = ["marketing", "preorder", "event", "repair", "pest", "other"];
+const CAT_COLOR = {
+  marketing: "#2a78d6", preorder: "#008300", event: "#e87ba4",
+  repair: "#eda100", pest: "#4a3aa7", other: "#1baf7a",
+};
+const catLabel = (c) => t("cat_" + c);
+const catChip = (c) =>
+  `<span class="chip"><i class="dot" style="background:${CAT_COLOR[c]}"></i>${catLabel(c)}</span>`;
+
+function schedActive() {
+  return (state.events || []).filter((e) => e.status === "active");
+}
+
+function schedFiltered() {
+  const isMgr = state.profile.role === "area_manager";
+  let evs = schedActive().filter((e) =>
+    String(e.event_date).substring(0, 7) === state.schedMonth);
+  if (isMgr && state.schedBranch !== "all") {
+    evs = evs.filter((e) => e.branch_id === state.schedBranch);
+  }
+  if (state.schedCats.length) {
+    evs = evs.filter((e) => state.schedCats.includes(e.category));
+  }
+  return evs;
+}
+
+function dayLabel(dstr) {
+  const [y, m, d] = dstr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(
+    LANG === "th" ? "th-TH" : "en-US",
+    { weekday: "short", day: "numeric", month: "long", year: "numeric" });
+}
+
+function viewSchedule() {
+  if (!state.schedMonth) state.schedMonth = todayStr().substring(0, 7);
+  const isMgr = state.profile.role === "area_manager";
+  const active = schedActive();
+
+  const months = (() => {
+    const s = new Set([todayStr().substring(0, 7)]);
+    active.forEach((e) => s.add(String(e.event_date).substring(0, 7)));
+    return [...s].sort().reverse();
+  })();
+  const monthSel = `<div class="filter"><select id="schedMonthSel">
+    ${months.map((m) =>
+      `<option value="${m}"${m === state.schedMonth ? " selected" : ""}>${monthLabel(m)}</option>`).join("")}
+  </select></div>`;
+
+  const inMonth = active.filter((e) =>
+    String(e.event_date).substring(0, 7) === state.schedMonth);
+
+  let branchTabsHtml = "";
+  if (isMgr) {
+    const cnt = (bid) => inMonth.filter((e) => bid === "all" || e.branch_id === bid).length;
+    const bTabs = [["all", t("all")]].concat(state.branches.map((b) => [b.id, b.name]));
+    branchTabsHtml = `<div class="subtabs">` + bTabs.map(([id, name]) =>
+      `<button data-sbtab="${id}" class="${state.schedBranch === id ? "on" : ""}">${esc(name)} (${cnt(id)})</button>`
+    ).join("") + `</div>`;
+  }
+
+  const allCatsOn = state.schedCats.length === 0;
+  const catTabsHtml = `<div class="subtabs">` +
+    `<button data-ctab="all" class="${allCatsOn ? "on" : ""}">${t("all")}</button>` +
+    CATS.map((c) => {
+      const on = state.schedCats.includes(c);
+      const style = on
+        ? ` style="background:${CAT_COLOR[c]}26;border-color:${CAT_COLOR[c]};color:var(--ink);font-weight:600"`
+        : "";
+      return `<button data-ctab="${c}"${style}><i class="dot" style="background:${CAT_COLOR[c]}"></i>${catLabel(c)}</button>`;
+    }).join("") + `</div>`;
+
+  const viewTabsHtml = `<div class="stabs">
+    <button data-vtab="cal" class="${state.schedView === "cal" ? "on" : ""}">${t("calView")}</button>
+    <button data-vtab="row" class="${state.schedView === "row" ? "on" : ""}">${t("rowView")}</button>
+  </div>`;
+
+  const shown = schedFiltered();
+  const body = state.schedView === "row" ? schedRowView(shown) : schedCalView(shown);
+
+  const addBtn = isMgr
+    ? `<div class="row" style="margin-bottom:14px"><button class="btn primary" id="addEventBtn">${t("addEvent")}</button></div>`
+    : "";
+
+  return addBtn + monthSel + branchTabsHtml + catTabsHtml + viewTabsHtml + body;
+}
+
+function schedCalView(evs) {
+  const [y, m] = state.schedMonth.split("-").map(Number);
+  const startDow = new Date(y, m - 1, 1).getDay();
+  const daysIn = new Date(y, m, 0).getDate();
+  const byDay = {};
+  evs.forEach((e) => {
+    const d = Number(String(e.event_date).substring(8, 10));
+    (byDay[d] = byDay[d] || []).push(e);
+  });
+  const today = todayStr();
+
+  let cells = t("days").map((d) => `<div class="dh">${d}</div>`).join("");
+  for (let i = 0; i < startDow; i++) cells += `<div class="day blank"></div>`;
+  for (let d = 1; d <= daysIn; d++) {
+    const dstr = state.schedMonth + "-" + String(d).padStart(2, "0");
+    const dayEvs = byDay[d] || [];
+    const isToday = dstr === today;
+    let inner = `<div class="dnum">${d}</div>`;
+    dayEvs.slice(0, 3).forEach((e) => {
+      inner += `<div class="ev" style="background:${CAT_COLOR[e.category]}26;border-left:3px solid ${CAT_COLOR[e.category]}">${esc(e.title)}</div>`;
+    });
+    if (dayEvs.length > 3) inner += `<div class="more">+${dayEvs.length - 3}</div>`;
+    cells += `<div class="day${dayEvs.length ? " has" : ""}${isToday ? " today" : ""}"${dayEvs.length ? ` data-dopen="${dstr}"` : ""}>${inner}</div>`;
+  }
+  return `<div class="cal">${cells}</div>`;
+}
+
+function schedRowView(evs) {
+  if (!evs.length) return `<div class="empty">${t("nothing")}</div>`;
+  const isMgr = state.profile.role === "area_manager";
+  const byDate = {};
+  evs.forEach((e) => {
+    const d = String(e.event_date).substring(0, 10);
+    (byDate[d] = byDate[d] || []).push(e);
+  });
+  return Object.keys(byDate).sort().map((d) =>
+    `<div class="sec">${dayLabel(d)}</div>` +
+    byDate[d].map((e) =>
+      `<div class="card click" data-eopen="${e.id}">
+        <div>${catChip(e.category)}${isMgr ? `<span class="chip branch">${esc(e.branch_name)}</span>` : ""}</div>
+        <h3>${esc(e.title)}</h3>
+        ${e.details ? `<p class="details">${esc(e.details)}</p>` : ""}
+      </div>`).join("")
+  ).join("");
+}
+
+function eventModalBody(e) {
+  const isMgr = state.profile.role === "area_manager";
+  return `<div>${catChip(e.category)}${isMgr ? `<span class="chip branch">${esc(e.branch_name)}</span>` : ""}</div>` +
+    `<h3>${esc(e.title)}</h3>` +
+    (e.details ? `<p class="details">${esc(e.details)}</p>` : "") +
+    `<div class="meta">${dayLabel(String(e.event_date).substring(0, 10))}</div>`;
+}
+
+function openEventModal(id) {
+  const e = (state.events || []).find((x) => x.id === id);
+  if (!e) return;
+  const isMgr = state.profile.role === "area_manager";
+  openModal(eventModalBody(e) +
+    (isMgr
+      ? `<div class="row" style="margin-top:16px"><button class="btn danger" id="evCancel">${t("cancelEvent")}</button></div>`
+      : ""));
+  if (isMgr) {
+    el("evCancel").onclick = () =>
+      confirmModal(t("confirmCancel"),
+        () => cancelEvent(id),
+        () => openEventModal(id));
+  }
+}
+
+function openDayModal(dstr) {
+  const isMgr = state.profile.role === "area_manager";
+  const dayEvs = schedFiltered().filter((e) => String(e.event_date).substring(0, 10) === dstr);
+  if (!dayEvs.length) return;
+  openModal(
+    `<h3>${dayLabel(dstr)}</h3>` +
+    dayEvs.map((e) =>
+      `<div class="card" style="margin-top:10px">
+        <div>${catChip(e.category)}${isMgr ? `<span class="chip branch">${esc(e.branch_name)}</span>` : ""}</div>
+        <h3 style="font-size:15px">${esc(e.title)}</h3>
+        ${e.details ? `<p class="details">${esc(e.details)}</p>` : ""}
+        ${isMgr ? `<div class="row" style="margin-top:8px"><button class="btn danger subtle" data-evcancel="${e.id}" data-evday="${dstr}">${t("cancelEvent")}</button></div>` : ""}
+      </div>`).join(""));
+  document.querySelectorAll("[data-evcancel]").forEach((b) => {
+    b.onclick = () => {
+      const id = b.getAttribute("data-evcancel");
+      const day = b.getAttribute("data-evday");
+      confirmModal(t("confirmCancel"),
+        () => cancelEvent(id),
+        () => openDayModal(day));
+    };
+  });
+}
+
+function cancelEvent(id) {
+  api("/api/events/" + id + "/cancel", { method: "POST" })
+    .then(() => { toast(t("canceledToast")); loadApp(); })
+    .catch((e) => toast(e.message));
+}
+
+function openAddEventModal() {
+  openModal(
+    `<h3>${t("addEventTitle")}</h3>
+     <form id="newEvent">
+       <label>${t("branchLabel")}</label>
+       <select id="eBranch" required>
+         ${state.branches.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+       </select>
+       <label>${t("category")}</label>
+       <select id="eCat" required>
+         ${CATS.map((c) => `<option value="${c}">${catLabel(c)}</option>`).join("")}
+       </select>
+       <label>${t("whatEvent")}</label><input id="eTitle" required maxlength="200">
+       <label>${t("detailsOpt")}</label><textarea id="eDetails"></textarea>
+       <label>${t("eventDate")}</label><input id="eDate" type="date" value="${todayStr()}" required>
+       <div style="margin-top:14px">
+         <button class="btn primary" style="width:100%" type="submit">${t("postEvent")}</button>
+       </div>
+     </form>`);
+  el("newEvent").onsubmit = (ev) => {
+    ev.preventDefault();
+    api("/api/events", {
+      method: "POST",
+      body: JSON.stringify({
+        branch_id: el("eBranch").value,
+        category: el("eCat").value,
+        title: el("eTitle").value,
+        details: el("eDetails").value,
+        event_date: el("eDate").value,
+      }),
+    }).then(() => { closeModal(); toast(t("eventAdded")); loadApp(); })
+      .catch((err) => toast(err.message));
+  };
 }
 
 // ---------------- branch views ----------------
