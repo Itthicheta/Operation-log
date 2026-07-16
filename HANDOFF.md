@@ -111,3 +111,12 @@ were touched. See `CLAUDE.md` for the rules.
   create form; login now takes a plain name (appends `@mamapook.local`); Branches tab is
   read-only. `/api/setup` and `/api/branches` endpoints remain in the edge function but
   are no longer reachable from the UI.
+- **2026-07-16** — Manager-flow redesign + i18n (owner's spec). Frontend: add-task is
+  now a button opening a modal (deadline pre-filled with today); manager's task list got
+  per-branch tab pills with ongoing counts (All first) and All/Done/On-going status tabs;
+  task cards show green Done / yellow On-going chips; Done cards have a ✓ button opening
+  a window with Solved (with Yes/No confirm) and Recheck (back to on-going); On-going
+  cards open a window with Solved; all windows have an ✕ close. Whole app is now
+  bilingual with a TH/EN toggle (Thai default, stored in localStorage). Migration
+  `allow_manager_close_open_problem`: manager may close a problem directly from open
+  (branch still cannot) — verified with a rollback SQL test against the real roles.
