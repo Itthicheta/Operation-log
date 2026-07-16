@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,24 +8,38 @@
   :root { --bg:#f4f5f7; --card:#fff; --ink:#1c2733; --muted:#68737f; --line:#e3e7ec;
           --brand:#0f6b4f; --brand-ink:#fff; --warn:#b3261e; --amber:#8a6100; --chipbg:#eef1f4; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;
          background:var(--bg); color:var(--ink); font-size:16px; }
   .wrap { max-width:760px; margin:0 auto; padding:16px 12px 64px; }
   header.app { display:flex; align-items:center; justify-content:space-between; gap:8px;
-               padding:14px 4px 10px; }
+               padding:14px 4px 10px; flex-wrap:wrap; }
   header.app h1 { font-size:19px; margin:0; }
   header.app .who { font-size:13px; color:var(--muted); }
   .tabs { display:flex; gap:6px; margin:8px 0 16px; flex-wrap:wrap; }
-  .tabs button { flex:1; min-width:130px; padding:10px 8px; border:1px solid var(--line);
+  .tabs button { flex:1; min-width:120px; padding:10px 8px; border:1px solid var(--line);
                  background:var(--card); border-radius:10px; font-size:14px; cursor:pointer; }
   .tabs button.on { background:var(--brand); color:var(--brand-ink); border-color:var(--brand); }
+  .subtabs { display:flex; gap:6px; margin:0 0 10px; flex-wrap:wrap; }
+  .subtabs button { padding:7px 12px; border:1px solid var(--line); background:var(--card);
+                    border-radius:99px; font-size:13px; cursor:pointer; }
+  .subtabs button.on { background:#1a4e8a; color:#fff; border-color:#1a4e8a; }
+  .stabs { display:flex; gap:6px; margin:0 0 14px; flex-wrap:wrap; }
+  .stabs button { padding:7px 14px; border:1px solid var(--line); background:var(--card);
+                  border-radius:8px; font-size:13px; cursor:pointer; }
+  .stabs button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
           padding:14px; margin-bottom:10px; }
+  .card.click { cursor:pointer; }
+  .card.click:active { background:#fafbfc; }
+  .cardrow { display:flex; gap:10px; align-items:center; }
+  .cardrow .grow { flex:1; min-width:0; }
+  .checkbtn { flex:none; width:44px; height:44px; border-radius:50%; border:2px solid var(--brand);
+              background:#e6f4ec; color:var(--brand); font-size:20px; cursor:pointer; }
   .card h3 { margin:0 0 4px; font-size:16px; }
-  .card .meta { font-size:13px; color:var(--muted); margin:2px 0 8px; }
-  .card .details { font-size:14px; white-space:pre-wrap; margin:0 0 10px; }
+  .card .meta { font-size:13px; color:var(--muted); margin:2px 0 0; }
+  .card .details { font-size:14px; white-space:pre-wrap; margin:0 0 8px; }
   .chip { display:inline-block; font-size:12px; padding:3px 9px; border-radius:99px;
-          background:var(--chipbg); color:var(--muted); margin-right:6px; }
+          background:var(--chipbg); color:var(--muted); margin-right:6px; margin-bottom:4px; }
   .chip.branch { background:#e7f0fb; color:#1a4e8a; }
   .chip.warn { background:#fdecea; color:var(--warn); font-weight:600; }
   .chip.amber { background:#fff3d6; color:var(--amber); font-weight:600; }
@@ -40,12 +54,13 @@
   .row { display:flex; gap:8px; flex-wrap:wrap; }
   form.panel { background:var(--card); border:1px solid var(--line); border-radius:12px;
                padding:14px; margin-bottom:16px; }
-  form.panel label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
-  form.panel input, form.panel textarea, form.panel select {
+  form.panel label, .modal form label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  form.panel input, form.panel textarea, form.panel select,
+  .modal form input, .modal form textarea, .modal form select {
     width:100%; padding:10px; border:1px solid var(--line); border-radius:8px;
     font-size:15px; font-family:inherit; background:#fff; color:var(--ink); }
-  form.panel textarea { min-height:70px; }
-  .login { max-width:380px; margin:10vh auto 0; }
+  form.panel textarea, .modal form textarea { min-height:70px; }
+  .login { max-width:380px; margin:8vh auto 0; }
   .login h1 { text-align:center; }
   .error { color:var(--warn); font-size:14px; margin:10px 0; min-height:18px; }
   .empty { color:var(--muted); font-size:14px; padding:8px 4px; }
@@ -54,26 +69,124 @@
                    font-size:14px; background:#fff; color:var(--ink); }
   details.log { margin-top:10px; }
   details.log summary { cursor:pointer; font-size:14px; color:var(--muted); padding:6px 2px; }
+  .overlay { position:fixed; inset:0; background:rgba(20,28,36,.5); display:flex;
+             align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal { background:var(--card); border-radius:14px; padding:18px; width:100%;
+           max-width:420px; position:relative; max-height:85vh; overflow-y:auto; }
+  .modal .x { position:absolute; top:10px; right:10px; width:34px; height:34px;
+              border-radius:50%; border:1px solid var(--line); background:var(--card);
+              font-size:15px; cursor:pointer; color:var(--muted); }
+  .modal h3 { margin:4px 24px 8px 0; font-size:17px; }
   .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
            background:var(--ink); color:#fff; padding:10px 18px; border-radius:10px;
-           font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
+           font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none;
+           max-width:90vw; z-index:60; }
   .toast.show { opacity:1; }
 </style>
 </head>
 <body>
-<div id="app" class="wrap"><p style="text-align:center;color:#68737f;margin-top:20vh">Loading…</p></div>
+<div id="app" class="wrap"><p style="text-align:center;color:#68737f;margin-top:20vh">กำลังโหลด…</p></div>
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 "use strict";
 
-// --- Supabase (auth handled entirely by supabase-js: sessions, refresh, etc.)
+// --- Supabase (auth handled entirely by supabase-js) ---
 const SUPABASE_URL = "https://qtpwrwapbefczvqdfzes.supabase.co";
 const SUPABASE_KEY = "sb_publishable_qd7zSSED8M1BjWUql6eZXw_iRv6fKYU";
 const API = SUPABASE_URL + "/functions/v1/oplog-app";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const state = { profile: null, branches: [], items: [], tab: null, branchFilter: "all" };
+// --- language (Thai default) ---
+let LANG = localStorage.getItem("oplog_lang") || "th";
+const STR = {
+  th: {
+    loginName: "ชื่อผู้ใช้", password: "รหัสผ่าน", loginBtn: "เข้าสู่ระบบ",
+    loginHint: "เช่น mamapook หรือ Rama9",
+    loginErr: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+    changePw: "เปลี่ยนรหัสผ่าน", pwPrompt: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร):",
+    pwChanged: "เปลี่ยนรหัสผ่านเรียบร้อย", logout: "ออกจากระบบ",
+    areaManager: "ผู้จัดการเขต", branchRole: "สาขา",
+    tasksForBranches: "งานของสาขา", branchRequests: "คำขอจากสาขา", branchesTab: "สาขา",
+    fromManager: "จากผู้จัดการเขต", ourRequests: "คำขอของเรา",
+    all: "ทั้งหมด", doneStatus: "เสร็จแล้ว", ongoing: "กำลังดำเนินการ",
+    solvedBtn: "แก้ไขแล้ว ✓", recheck: "ตรวจใหม่ ↩",
+    confirmSolved: "ยืนยันว่างานนี้แก้ไขเสร็จแล้ว?", yes: "ใช่", no: "ไม่ใช่",
+    solvedToast: "บันทึกเป็นแก้ไขแล้ว", recheckToast: "ส่งกลับให้สาขาแล้ว", saved: "บันทึกแล้ว",
+    addTask: "+ เพิ่มงาน", addTaskTitle: "เพิ่มงานให้สาขา",
+    branchLabel: "สาขา", whatProblem: "ปัญหา / สิ่งที่ต้องทำ",
+    detailsOpt: "รายละเอียด (ไม่บังคับ)", deadlineLabel: "กำหนดเสร็จ",
+    postToBranch: "ส่งให้สาขา", postedToast: "ส่งให้สาขาแล้ว",
+    solvedLog: "บันทึกงานที่แก้ไขแล้ว", completedLog: "บันทึกที่เสร็จสิ้น",
+    solvedChip: "แก้ไขแล้ว", completedChip: "เสร็จสิ้น",
+    nothing: "ไม่มีรายการ", empty: "ว่าง",
+    deadline: "กำหนด", overdue: "เกินกำหนด",
+    posted: "สร้างเมื่อ", tickedOn: "ติ๊กเมื่อ", closedOn: "ปิดเมื่อ",
+    allBranches: "ทุกสาขา",
+    asking: "สิ่งที่สาขาขอมา", needsYou: "รอคุณจัดการ", providedBtn: "จัดให้แล้ว ✓",
+    waitConfirm: "จัดให้แล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
+    branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
+    todoFrom: "สิ่งที่ต้องทำ — จากผู้จัดการเขต", todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
+    waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ", waitCheckChip: "รอตรวจ",
+    askTitle: "ขอสิ่งที่ต้องการจากผู้จัดการเขต", whatNeed: "ต้องการอะไร?",
+    neededBy: "ต้องการภายใน (ไม่บังคับ)", sendRequest: "ส่งคำขอ", requestSent: "ส่งคำขอแล้ว",
+    waitingManager: "รอผู้จัดการเขต", sentChip: "ส่งแล้ว",
+    providedQ: "ผู้จัดการแจ้งว่าจัดให้แล้ว — ได้รับแล้วใช่ไหม?",
+    receivedBtn: "ได้รับแล้ว ✓", notReceived: "ยังไม่ได้รับ", checkChip: "ตรวจสอบ",
+    branchSays: "สาขาติ๊กแล้ว",
+  },
+  en: {
+    loginName: "Login name", password: "Password", loginBtn: "Log in",
+    loginHint: "e.g. mamapook or Rama9",
+    loginErr: "Wrong login name or password.",
+    changePw: "Change password", pwPrompt: "New password (min 8 characters):",
+    pwChanged: "Password changed.", logout: "Log out",
+    areaManager: "Area manager", branchRole: "Branch",
+    tasksForBranches: "Tasks for branches", branchRequests: "Branch requests", branchesTab: "Branches",
+    fromManager: "From area manager", ourRequests: "Our requests",
+    all: "All", doneStatus: "Done", ongoing: "On-going",
+    solvedBtn: "Solved ✓", recheck: "Recheck ↩",
+    confirmSolved: "Confirm this task is solved?", yes: "Yes", no: "No",
+    solvedToast: "Marked as solved.", recheckToast: "Sent back to the branch.", saved: "Saved.",
+    addTask: "+ Add task", addTaskTitle: "Add a task for a branch",
+    branchLabel: "Branch", whatProblem: "What is the problem / what must be done?",
+    detailsOpt: "Details (optional)", deadlineLabel: "Deadline",
+    postToBranch: "Post to branch", postedToast: "Posted to the branch.",
+    solvedLog: "Solved log", completedLog: "Completed log",
+    solvedChip: "Solved", completedChip: "Completed",
+    nothing: "Nothing here.", empty: "Empty.",
+    deadline: "Deadline", overdue: "overdue",
+    posted: "Posted", tickedOn: "ticked", closedOn: "closed",
+    allBranches: "All branches",
+    asking: "Branches are asking for", needsYou: "Needs you", providedBtn: "Provided ✓",
+    waitConfirm: "Provided — waiting for branch to confirm", waitingChip: "Waiting",
+    waitingConfChip: "Waiting for confirmation",
+    branchesCount: "Branches", activeItems: "active item(s)",
+    todoFrom: "To do — from the area manager", todoChip: "To do", doneBtn: "Done ✓",
+    waitingCheck: "Ticked — waiting for the manager to check", waitCheckChip: "Waiting for check",
+    askTitle: "Ask the area manager for something", whatNeed: "What do you need?",
+    neededBy: "Needed by (optional)", sendRequest: "Send request", requestSent: "Request sent.",
+    waitingManager: "Waiting for the area manager", sentChip: "Sent",
+    providedQ: "Manager says provided — did you receive it?",
+    receivedBtn: "Received ✓", notReceived: "Not received", checkChip: "Check",
+    branchSays: "Branch says done",
+  },
+};
+const t = (k) => STR[LANG][k] ?? STR.en[k] ?? k;
+function setLang(l) {
+  LANG = l;
+  localStorage.setItem("oplog_lang", l);
+  document.documentElement.lang = l;
+  if (state.profile) renderApp(); else renderLogin();
+}
+
+const state = {
+  profile: null, branches: [], items: [],
+  tab: null,
+  mBranch: "all",   // manager problems: branch tab
+  mStatus: "all",   // manager problems: status tab (all | done | open)
+  branchFilter: "all", // manager requests: dropdown
+};
 
 async function api(path, opts = {}) {
   const { data: { session } } = await sb.auth.getSession();
@@ -93,18 +206,36 @@ function esc(s) {
 }
 const el = (id) => document.getElementById(id);
 function toast(msg) {
-  const t = el("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2600);
+  const tt = el("toast");
+  tt.textContent = msg;
+  tt.classList.add("show");
+  setTimeout(() => tt.classList.remove("show"), 2600);
 }
 const fmtDate = (d) => (d ? String(d).substring(0, 10) : "");
-const isOverdue = (d) => !!d && fmtDate(d) < new Date().toISOString().substring(0, 10);
+const todayStr = () => new Date().toISOString().substring(0, 10);
+const isOverdue = (d) => !!d && fmtDate(d) < todayStr();
+
+// ---------------- modal ----------------
+
+function openModal(html) {
+  closeModal();
+  const ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.id = "overlay";
+  ov.innerHTML = `<div class="modal"><button class="x" id="modalX">✕</button>` +
+    `<div id="modalBody">${html}</div></div>`;
+  document.body.appendChild(ov);
+  el("modalX").onclick = closeModal;
+  ov.onclick = (e) => { if (e.target === ov) closeModal(); };
+}
+function closeModal() {
+  const ov = el("overlay");
+  if (ov) ov.remove();
+}
 
 // ---------------- login ----------------
 // Accounts are pre-created (no self-service sign-up). People log in with just
-// their name; we turn it into the account's email behind the scenes. Typing a
-// full email still works, for flexibility.
+// their name; we turn it into the account's email behind the scenes.
 
 const LOGIN_DOMAIN = "@mamapook.local";
 
@@ -117,16 +248,18 @@ function toLoginEmail(input) {
 function renderLogin() {
   el("app").innerHTML = `
     <div class="login">
+      <div style="text-align:right"><button class="btn subtle" id="langBtn">${LANG === "th" ? "EN" : "ไทย"}</button></div>
       <h1>Operation Log</h1>
       <form class="panel" id="loginForm">
-        <label>Login name</label>
+        <label>${t("loginName")}</label>
         <input id="email" autocomplete="username" autocapitalize="none" spellcheck="false"
-               required placeholder="e.g. mamapook or Rama9">
-        <label>Password</label><input id="pw" type="password" autocomplete="current-password" required>
+               required placeholder="${t("loginHint")}">
+        <label>${t("password")}</label><input id="pw" type="password" autocomplete="current-password" required>
         <div class="error" id="err"></div>
-        <button class="btn primary" style="width:100%" type="submit">Log in</button>
+        <button class="btn primary" style="width:100%" type="submit">${t("loginBtn")}</button>
       </form>
     </div>`;
+  el("langBtn").onclick = () => setLang(LANG === "th" ? "en" : "th");
   el("loginForm").onsubmit = async (e) => {
     e.preventDefault();
     el("err").textContent = "";
@@ -134,7 +267,7 @@ function renderLogin() {
       email: toLoginEmail(el("email").value),
       password: el("pw").value,
     });
-    if (error) { el("err").textContent = "Wrong login name or password."; return; }
+    if (error) { el("err").textContent = t("loginErr"); return; }
     loadApp();
   };
 }
@@ -156,10 +289,10 @@ async function loadApp() {
 }
 
 async function changePassword() {
-  const pw = prompt("New password (min 8 characters):");
+  const pw = prompt(t("pwPrompt"));
   if (!pw) return;
   const { error } = await sb.auth.updateUser({ password: pw });
-  toast(error ? error.message : "Password changed.");
+  toast(error ? error.message : t("pwChanged"));
 }
 
 async function logout() {
@@ -168,9 +301,9 @@ async function logout() {
   renderLogin();
 }
 
-function setStatus(id, status) {
+function setStatus(id, status, okMsg) {
   api("/api/items/" + id + "/status", { method: "POST", body: JSON.stringify({ status }) })
-    .then(loadApp)
+    .then(() => { if (okMsg) toast(okMsg); loadApp(); })
     .catch((e) => toast(e.message));
 }
 
@@ -178,8 +311,8 @@ function renderApp() {
   const p = state.profile;
   const isMgr = p.role === "area_manager";
   const tabs = isMgr
-    ? [["problems", "Tasks for branches"], ["requests", "Branch requests"], ["branches", "Branches"]]
-    : [["todo", "From area manager"], ["asks", "Our requests"]];
+    ? [["problems", t("tasksForBranches")], ["requests", t("branchRequests")], ["branches", t("branchesTab")]]
+    : [["todo", t("fromManager")], ["asks", t("ourRequests")]];
   const views = {
     problems: viewMgrProblems, requests: viewMgrRequests, branches: viewMgrBranches,
     todo: viewBranchTodo, asks: viewBranchAsks,
@@ -187,10 +320,11 @@ function renderApp() {
   el("app").innerHTML = `
     <header class="app">
       <div><h1>Operation Log</h1>
-        <div class="who">${esc(p.display_name)}${isMgr ? " · Area manager" : " · Branch"}</div></div>
+        <div class="who">${esc(p.display_name)} · ${isMgr ? t("areaManager") : t("branchRole")}</div></div>
       <div class="row">
-        <button class="btn subtle" id="pwBtn">Password</button>
-        <button class="btn subtle" id="outBtn">Log out</button>
+        <button class="btn subtle" id="langBtn">${LANG === "th" ? "EN" : "ไทย"}</button>
+        <button class="btn subtle" id="pwBtn">${t("changePw")}</button>
+        <button class="btn subtle" id="outBtn">${t("logout")}</button>
       </div>
     </header>
     <div class="tabs">${tabs.map(([k, label]) =>
@@ -198,6 +332,7 @@ function renderApp() {
     </div>
     ${views[state.tab]()}`;
 
+  el("langBtn").onclick = () => setLang(LANG === "th" ? "en" : "th");
   el("pwBtn").onclick = changePassword;
   el("outBtn").onclick = logout;
   document.querySelectorAll("[data-tab]").forEach((b) => {
@@ -208,23 +343,30 @@ function renderApp() {
 
 // ---------------- shared rendering ----------------
 
+function metaLine(item) {
+  let dates = t("posted") + " " + fmtDate(item.created_at);
+  if (item.done_at) dates += " · " + t("tickedOn") + " " + fmtDate(item.done_at);
+  if (item.closed_at) dates += " · " + t("closedOn") + " " + fmtDate(item.closed_at);
+  return dates;
+}
+
+function deadlineChip(item) {
+  if (!item.deadline || item.status !== "open") return "";
+  const od = isOverdue(item.deadline);
+  return `<span class="chip${od ? " warn" : ""}">${t("deadline")} ${esc(fmtDate(item.deadline))}${od ? " — " + t("overdue") : ""}</span>`;
+}
+
 function card(item, actionsHtml, extraChips) {
   let chips = "";
   if (state.profile.role === "area_manager") {
     chips += `<span class="chip branch">${esc(item.branch_name)}</span>`;
   }
   chips += extraChips || "";
-  if (item.deadline && item.status === "open") {
-    const od = isOverdue(item.deadline);
-    chips += `<span class="chip${od ? " warn" : ""}">Deadline ${esc(fmtDate(item.deadline))}${od ? " — overdue" : ""}</span>`;
-  }
-  let dates = "Posted " + fmtDate(item.created_at);
-  if (item.done_at) dates += " · ticked " + fmtDate(item.done_at);
-  if (item.closed_at) dates += " · closed " + fmtDate(item.closed_at);
+  chips += deadlineChip(item);
   return `<div class="card"><div>${chips}</div><h3>${esc(item.title)}</h3>` +
     (item.details ? `<p class="details">${esc(item.details)}</p>` : "") +
-    `<div class="meta">${dates}</div>` +
-    (actionsHtml ? `<div class="row">${actionsHtml}</div>` : "") +
+    `<div class="meta">${metaLine(item)}</div>` +
+    (actionsHtml ? `<div class="row" style="margin-top:10px">${actionsHtml}</div>` : "") +
     `</div>`;
 }
 
@@ -233,31 +375,33 @@ const actionBtn = (item, status, label, cls) =>
 
 function bindHandlers() {
   document.querySelectorAll("[data-act]").forEach((b) => {
-    b.onclick = () => {
+    b.onclick = (e) => {
+      e.stopPropagation();
       const [id, status] = b.getAttribute("data-act").split("|");
-      setStatus(id, status);
+      setStatus(id, status, t("saved"));
     };
+  });
+  document.querySelectorAll("[data-btab]").forEach((b) => {
+    b.onclick = () => { state.mBranch = b.getAttribute("data-btab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-stab]").forEach((b) => {
+    b.onclick = () => { state.mStatus = b.getAttribute("data-stab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-open]").forEach((b) => {
+    b.onclick = () => openTaskModal(b.getAttribute("data-open"));
   });
   const bf = el("branchFilter");
   if (bf) bf.onchange = () => { state.branchFilter = bf.value; renderApp(); };
+  const at = el("addTaskBtn");
+  if (at) at.onclick = openAddTaskModal;
   let f;
-  if ((f = el("newProblem"))) f.onsubmit = submitNewProblem;
   if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
-}
-
-function filtered(kind) {
-  return state.items.filter((i) => {
-    if (i.kind !== kind) return false;
-    if (state.profile.role === "area_manager" && state.branchFilter !== "all" &&
-        i.branch_id !== state.branchFilter) return false;
-    return true;
-  });
 }
 
 function branchFilterHtml() {
   if (state.profile.role !== "area_manager" || state.branches.length === 0) return "";
   return `<div class="filter"><select id="branchFilter">
-    <option value="all">All branches</option>
+    <option value="all">${t("allBranches")}</option>
     ${state.branches.map((b) =>
       `<option value="${b.id}"${state.branchFilter === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
   </select></div>`;
@@ -265,110 +409,128 @@ function branchFilterHtml() {
 
 const section = (title, items, renderOne) =>
   `<div class="sec">${title} (${items.length})</div>` +
-  (items.length ? items.map(renderOne).join("") : `<div class="empty">Nothing here.</div>`);
+  (items.length ? items.map(renderOne).join("") : `<div class="empty">${t("nothing")}</div>`);
 
 const logSection = (title, items, renderOne) =>
   `<details class="log"><summary>${title} (${items.length})</summary>` +
-  (items.length ? items.map(renderOne).join("") : `<div class="empty">Empty.</div>`) +
+  (items.length ? items.map(renderOne).join("") : `<div class="empty">${t("empty")}</div>`) +
   `</details>`;
 
-// ---------------- manager views ----------------
+// ---------------- manager: tasks for branches ----------------
+
+function mgrStatusChip(item) {
+  return item.status === "done"
+    ? `<span class="chip ok">${t("doneStatus")}</span>`
+    : `<span class="chip amber">${t("ongoing")}</span>`;
+}
+
+function mgrTaskCard(item) {
+  const check = item.status === "done" ? `<button class="checkbtn">✓</button>` : "";
+  return `<div class="card click" data-open="${item.id}">
+    <div class="cardrow">
+      <div class="grow">
+        <div><span class="chip branch">${esc(item.branch_name)}</span>${mgrStatusChip(item)}${deadlineChip(item)}</div>
+        <h3>${esc(item.title)}</h3>
+        ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
+        <div class="meta">${metaLine(item)}</div>
+      </div>
+      ${check}
+    </div>
+  </div>`;
+}
 
 function viewMgrProblems() {
-  const items = filtered("problem");
-  const toCheck = items.filter((i) => i.status === "done");
-  const waiting = items.filter((i) => i.status === "open");
-  const solved = items.filter((i) => i.status === "closed");
-  const form = `
-    <form class="panel" id="newProblem"><strong>Post a problem / task for a branch</strong>
-      <label>Branch</label>
-      <select id="pBranch" required>
-        ${state.branches.length ? "" : "<option value=''>— add a branch first —</option>"}
-        ${state.branches.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
-      </select>
-      <label>What is the problem / what must be done?</label><input id="pTitle" required maxlength="200">
-      <label>Details (optional)</label><textarea id="pDetails"></textarea>
-      <label>Deadline (optional)</label><input id="pDeadline" type="date">
-      <div style="margin-top:12px"><button class="btn primary" type="submit">Post to branch</button></div>
-    </form>`;
-  return form + branchFilterHtml() +
-    section("Branch ticked — re-check on your next visit", toCheck, (i) =>
-      card(i,
-        actionBtn(i, "closed", "Passed — mark solved ✓", "primary") +
-        actionBtn(i, "open", "Not fixed — send back", "danger"),
-        `<span class="chip amber">Branch says done</span>`)) +
-    section("Waiting on branch", waiting, (i) =>
-      card(i, "", `<span class="chip">Waiting</span>`)) +
-    logSection("Solved log", solved, (i) =>
-      card(i, "", `<span class="chip ok">Solved</span>`));
+  const probs = state.items.filter((i) => i.kind === "problem");
+  const active = probs.filter((i) => i.status !== "closed");
+  const cnt = (bid) => active.filter((i) => bid === "all" || i.branch_id === bid).length;
+
+  const bTabs = [["all", t("all")]].concat(state.branches.map((b) => [b.id, b.name]));
+  const branchTabsHtml = `<div class="subtabs">` + bTabs.map(([id, name]) =>
+    `<button data-btab="${id}" class="${state.mBranch === id ? "on" : ""}">${esc(name)} (${cnt(id)})</button>`
+  ).join("") + `</div>`;
+
+  const inBranch = active.filter((i) => state.mBranch === "all" || i.branch_id === state.mBranch);
+  const nDone = inBranch.filter((i) => i.status === "done").length;
+  const nOpen = inBranch.filter((i) => i.status === "open").length;
+  const sTabs = [
+    ["all", t("all"), inBranch.length],
+    ["done", t("doneStatus"), nDone],
+    ["open", t("ongoing"), nOpen],
+  ];
+  const statusTabsHtml = `<div class="stabs">` + sTabs.map(([k, label, n]) =>
+    `<button data-stab="${k}" class="${state.mStatus === k ? "on" : ""}">${label} (${n})</button>`
+  ).join("") + `</div>`;
+
+  const shown = inBranch.filter((i) => state.mStatus === "all" || i.status === state.mStatus);
+  const list = shown.length ? shown.map(mgrTaskCard).join("") : `<div class="empty">${t("nothing")}</div>`;
+
+  const solved = probs.filter((i) =>
+    i.status === "closed" && (state.mBranch === "all" || i.branch_id === state.mBranch));
+
+  return `<div class="row" style="margin-bottom:14px">
+      <button class="btn primary" id="addTaskBtn">${t("addTask")}</button>
+    </div>` +
+    branchTabsHtml + statusTabsHtml + list +
+    logSection(t("solvedLog"), solved, (i) =>
+      card(i, "", `<span class="chip ok">${t("solvedChip")}</span>`));
 }
 
-function viewMgrRequests() {
-  const items = filtered("request");
-  const open = items.filter((i) => i.status === "open");
-  const provided = items.filter((i) => i.status === "done");
-  const closed = items.filter((i) => i.status === "closed");
-  return branchFilterHtml() +
-    section("Branches are asking for", open, (i) =>
-      card(i, actionBtn(i, "done", "Provided ✓", "primary"),
-        `<span class="chip amber">Needs you</span>`)) +
-    section("Provided — waiting for branch to confirm", provided, (i) =>
-      card(i, "", `<span class="chip">Waiting for confirmation</span>`)) +
-    logSection("Completed log", closed, (i) =>
-      card(i, "", `<span class="chip ok">Completed</span>`));
+function openTaskModal(id) {
+  const i = state.items.find((x) => x.id === id);
+  if (!i) return;
+  const isDone = i.status === "done";
+  openModal(
+    `<div>${`<span class="chip branch">${esc(i.branch_name)}</span>`}${mgrStatusChip(i)}${deadlineChip(i)}</div>` +
+    `<h3>${esc(i.title)}</h3>` +
+    (i.details ? `<p class="details">${esc(i.details)}</p>` : "") +
+    `<div class="meta">${metaLine(i)}</div>` +
+    `<div class="row" style="margin-top:16px">
+      <button class="btn primary" id="mSolve">${t("solvedBtn")}</button>
+      ${isDone ? `<button class="btn danger" id="mRecheck">${t("recheck")}</button>` : ""}
+    </div>`
+  );
+  el("mSolve").onclick = () => confirmSolve(id);
+  if (isDone) {
+    el("mRecheck").onclick = () => {
+      closeModal();
+      setStatus(id, "open", t("recheckToast"));
+    };
+  }
 }
 
-function viewMgrBranches() {
-  const list = state.branches.length
-    ? state.branches.map((b) => {
-        const n = state.items.filter((i) => i.branch_id === b.id && i.status !== "closed").length;
-        return `<div class="card"><h3>${esc(b.name)}</h3><div class="meta">${n} active item(s)</div></div>`;
-      }).join("")
-    : `<div class="empty">No branches yet.</div>`;
-  return `<div class="sec">Branches (${state.branches.length})</div>` + list;
+function confirmSolve(id) {
+  openModal(
+    `<h3>${t("confirmSolved")}</h3>
+     <div class="row" style="margin-top:16px">
+       <button class="btn primary" id="cYes">${t("yes")}</button>
+       <button class="btn" id="cNo">${t("no")}</button>
+     </div>`
+  );
+  el("cYes").onclick = () => {
+    closeModal();
+    setStatus(id, "closed", t("solvedToast"));
+  };
+  el("cNo").onclick = () => openTaskModal(id);
 }
 
-// ---------------- branch views ----------------
-
-function viewBranchTodo() {
-  const items = filtered("problem");
-  const todo = items.filter((i) => i.status === "open");
-  const waiting = items.filter((i) => i.status === "done");
-  const solved = items.filter((i) => i.status === "closed");
-  return section("To do — from the area manager", todo, (i) =>
-      card(i, actionBtn(i, "done", "Done ✓", "primary"),
-        `<span class="chip warn">To do</span>`)) +
-    section("Ticked — waiting for the manager to check", waiting, (i) =>
-      card(i, "", `<span class="chip amber">Waiting for check</span>`)) +
-    logSection("Solved log", solved, (i) =>
-      card(i, "", `<span class="chip ok">Solved</span>`));
+function openAddTaskModal() {
+  openModal(
+    `<h3>${t("addTaskTitle")}</h3>
+     <form id="newProblem">
+       <label>${t("branchLabel")}</label>
+       <select id="pBranch" required>
+         ${state.branches.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+       </select>
+       <label>${t("whatProblem")}</label><input id="pTitle" required maxlength="200">
+       <label>${t("detailsOpt")}</label><textarea id="pDetails"></textarea>
+       <label>${t("deadlineLabel")}</label><input id="pDeadline" type="date" value="${todayStr()}">
+       <div style="margin-top:14px">
+         <button class="btn primary" style="width:100%" type="submit">${t("postToBranch")}</button>
+       </div>
+     </form>`
+  );
+  el("newProblem").onsubmit = submitNewProblem;
 }
-
-function viewBranchAsks() {
-  const items = filtered("request");
-  const open = items.filter((i) => i.status === "open");
-  const provided = items.filter((i) => i.status === "done");
-  const closed = items.filter((i) => i.status === "closed");
-  const form = `
-    <form class="panel" id="newRequest"><strong>Ask the area manager for something</strong>
-      <label>What do you need?</label><input id="rTitle" required maxlength="200">
-      <label>Details (optional)</label><textarea id="rDetails"></textarea>
-      <label>Needed by (optional)</label><input id="rDeadline" type="date">
-      <div style="margin-top:12px"><button class="btn primary" type="submit">Send request</button></div>
-    </form>`;
-  return form +
-    section("Waiting for the area manager", open, (i) =>
-      card(i, "", `<span class="chip">Sent</span>`)) +
-    section("Manager says provided — did you receive it?", provided, (i) =>
-      card(i,
-        actionBtn(i, "closed", "Received ✓", "primary") +
-        actionBtn(i, "open", "Not received", "danger"),
-        `<span class="chip amber">Check</span>`)) +
-    logSection("Completed log", closed, (i) =>
-      card(i, "", `<span class="chip ok">Completed</span>`));
-}
-
-// ---------------- form submits ----------------
 
 function submitNewProblem(e) {
   e.preventDefault();
@@ -381,8 +543,77 @@ function submitNewProblem(e) {
       details: el("pDetails").value,
       deadline: el("pDeadline").value || null,
     }),
-  }).then(() => { toast("Posted to the branch."); loadApp(); })
+  }).then(() => { closeModal(); toast(t("postedToast")); loadApp(); })
     .catch((err) => toast(err.message));
+}
+
+// ---------------- manager: branch requests ----------------
+
+function viewMgrRequests() {
+  const items = state.items.filter((i) =>
+    i.kind === "request" &&
+    (state.branchFilter === "all" || i.branch_id === state.branchFilter));
+  const open = items.filter((i) => i.status === "open");
+  const provided = items.filter((i) => i.status === "done");
+  const closed = items.filter((i) => i.status === "closed");
+  return branchFilterHtml() +
+    section(t("asking"), open, (i) =>
+      card(i, actionBtn(i, "done", t("providedBtn"), "primary"),
+        `<span class="chip amber">${t("needsYou")}</span>`)) +
+    section(t("waitConfirm"), provided, (i) =>
+      card(i, "", `<span class="chip">${t("waitingConfChip")}</span>`)) +
+    logSection(t("completedLog"), closed, (i) =>
+      card(i, "", `<span class="chip ok">${t("completedChip")}</span>`));
+}
+
+function viewMgrBranches() {
+  const list = state.branches.length
+    ? state.branches.map((b) => {
+        const n = state.items.filter((i) => i.branch_id === b.id && i.status !== "closed").length;
+        return `<div class="card"><h3>${esc(b.name)}</h3><div class="meta">${n} ${t("activeItems")}</div></div>`;
+      }).join("")
+    : `<div class="empty">${t("nothing")}</div>`;
+  return `<div class="sec">${t("branchesCount")} (${state.branches.length})</div>` + list;
+}
+
+// ---------------- branch views ----------------
+
+function viewBranchTodo() {
+  const items = state.items.filter((i) => i.kind === "problem");
+  const todo = items.filter((i) => i.status === "open");
+  const waiting = items.filter((i) => i.status === "done");
+  const solved = items.filter((i) => i.status === "closed");
+  return section(t("todoFrom"), todo, (i) =>
+      card(i, actionBtn(i, "done", t("doneBtn"), "primary"),
+        `<span class="chip warn">${t("todoChip")}</span>`)) +
+    section(t("waitingCheck"), waiting, (i) =>
+      card(i, "", `<span class="chip amber">${t("waitCheckChip")}</span>`)) +
+    logSection(t("solvedLog"), solved, (i) =>
+      card(i, "", `<span class="chip ok">${t("solvedChip")}</span>`));
+}
+
+function viewBranchAsks() {
+  const items = state.items.filter((i) => i.kind === "request");
+  const open = items.filter((i) => i.status === "open");
+  const provided = items.filter((i) => i.status === "done");
+  const closed = items.filter((i) => i.status === "closed");
+  const form = `
+    <form class="panel" id="newRequest"><strong>${t("askTitle")}</strong>
+      <label>${t("whatNeed")}</label><input id="rTitle" required maxlength="200">
+      <label>${t("detailsOpt")}</label><textarea id="rDetails"></textarea>
+      <label>${t("neededBy")}</label><input id="rDeadline" type="date">
+      <div style="margin-top:12px"><button class="btn primary" type="submit">${t("sendRequest")}</button></div>
+    </form>`;
+  return form +
+    section(t("waitingManager"), open, (i) =>
+      card(i, "", `<span class="chip">${t("sentChip")}</span>`)) +
+    section(t("providedQ"), provided, (i) =>
+      card(i,
+        actionBtn(i, "closed", t("receivedBtn"), "primary") +
+        actionBtn(i, "open", t("notReceived"), "danger"),
+        `<span class="chip amber">${t("checkChip")}</span>`)) +
+    logSection(t("completedLog"), closed, (i) =>
+      card(i, "", `<span class="chip ok">${t("completedChip")}</span>`));
 }
 
 function submitNewRequest(e) {
@@ -396,12 +627,13 @@ function submitNewRequest(e) {
       details: el("rDetails").value,
       deadline: el("rDeadline").value || null,
     }),
-  }).then(() => { toast("Request sent."); loadApp(); })
+  }).then(() => { toast(t("requestSent")); loadApp(); })
     .catch((err) => toast(err.message));
 }
 
 // ---------------- boot ----------------
 
+document.documentElement.lang = LANG;
 sb.auth.getSession().then(({ data: { session } }) => {
   if (session) loadApp();
   else renderLogin();
