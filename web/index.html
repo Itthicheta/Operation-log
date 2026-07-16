@@ -126,7 +126,7 @@ const STR = {
     all: "ทั้งหมด", doneStatus: "เสร็จแล้ว", ongoing: "กำลังดำเนินการ",
     solvedBtn: "แก้ไขแล้ว ✓", recheck: "ตรวจใหม่ ↩",
     confirmSolved: "ยืนยันว่างานนี้แก้ไขเสร็จแล้ว?", yes: "ใช่", no: "ไม่ใช่",
-    solvedToast: "บันทึกเป็นแก้ไขแล้ว", recheckToast: "ส่งกลับให้สาขาแล้ว", saved: "บันทึกแล้ว",
+    solvedToast: "บันทึกเป็นแก้ไขแล้ว", recheckToast: "ส่งกลับให้สาขาแล้ว",
     addTask: "+ เพิ่มงาน", addTaskTitle: "เพิ่มงานให้สาขา",
     branchLabel: "สาขา", whatProblem: "ปัญหา / สิ่งที่ต้องทำ",
     detailsOpt: "รายละเอียด (ไม่บังคับ)", deadlineLabel: "กำหนดเสร็จ",
@@ -141,14 +141,16 @@ const STR = {
     waitConfirm: "จัดให้แล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
     branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
     total: "รวม", chartTitle: "จำนวนรวมต่อสาขา",
-    todoFrom: "สิ่งที่ต้องทำ — จากผู้จัดการเขต", todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
-    waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ", waitCheckChip: "รอตรวจ",
+    todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
+    waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ",
+    confirmDone: "ยืนยันว่าทำงานนี้เสร็จแล้ว?",
     askTitle: "ขอสิ่งที่ต้องการจากผู้จัดการเขต", whatNeed: "ต้องการอะไร?",
     neededBy: "ต้องการภายใน (ไม่บังคับ)", sendRequest: "ส่งคำขอ", requestSent: "ส่งคำขอแล้ว",
-    waitingManager: "รอผู้จัดการเขต", sentChip: "ส่งแล้ว",
-    providedQ: "ผู้จัดการแจ้งว่าจัดให้แล้ว — ได้รับแล้วใช่ไหม?",
-    receivedBtn: "ได้รับแล้ว ✓", notReceived: "ยังไม่ได้รับ", checkChip: "ตรวจสอบ",
-    branchSays: "สาขาติ๊กแล้ว",
+    addRequest: "+ เพิ่มคำขอ",
+    waitingManager: "รอผู้จัดการเขต", waitMgrChip: "รอผู้จัดการ",
+    confirmReceived: "ยืนยันว่าได้รับแล้ว?", receivedToast: "ยืนยันรับแล้ว",
+    notReceivedToast: "แจ้งกลับผู้จัดการแล้ว",
+    receivedBtn: "ได้รับแล้ว ✓", notReceived: "ยังไม่ได้รับ",
   },
   en: {
     loginName: "Login name", password: "Password", loginBtn: "Log in",
@@ -162,7 +164,7 @@ const STR = {
     all: "All", doneStatus: "Done", ongoing: "On-going",
     solvedBtn: "Solved ✓", recheck: "Recheck ↩",
     confirmSolved: "Confirm this task is solved?", yes: "Yes", no: "No",
-    solvedToast: "Marked as solved.", recheckToast: "Sent back to the branch.", saved: "Saved.",
+    solvedToast: "Marked as solved.", recheckToast: "Sent back to the branch.",
     addTask: "+ Add task", addTaskTitle: "Add a task for a branch",
     branchLabel: "Branch", whatProblem: "What is the problem / what must be done?",
     detailsOpt: "Details (optional)", deadlineLabel: "Deadline",
@@ -178,14 +180,16 @@ const STR = {
     waitingConfChip: "Waiting for confirmation",
     branchesCount: "Branches", activeItems: "active item(s)",
     total: "Total", chartTitle: "Totals per branch",
-    todoFrom: "To do — from the area manager", todoChip: "To do", doneBtn: "Done ✓",
-    waitingCheck: "Ticked — waiting for the manager to check", waitCheckChip: "Waiting for check",
+    todoChip: "To do", doneBtn: "Done ✓",
+    waitingCheck: "Ticked — waiting for the manager to check",
+    confirmDone: "Confirm this task is done?",
     askTitle: "Ask the area manager for something", whatNeed: "What do you need?",
     neededBy: "Needed by (optional)", sendRequest: "Send request", requestSent: "Request sent.",
-    waitingManager: "Waiting for the area manager", sentChip: "Sent",
-    providedQ: "Manager says provided — did you receive it?",
-    receivedBtn: "Received ✓", notReceived: "Not received", checkChip: "Check",
-    branchSays: "Branch says done",
+    addRequest: "+ Add request",
+    waitingManager: "Waiting for the area manager", waitMgrChip: "Waiting for manager",
+    confirmReceived: "Confirm you received it?", receivedToast: "Confirmed received.",
+    notReceivedToast: "Sent back to the manager.",
+    receivedBtn: "Received ✓", notReceived: "Not received",
   },
 };
 const t = (k) => STR[LANG][k] ?? STR.en[k] ?? k;
@@ -204,6 +208,8 @@ const state = {
   rBranch: "all",   // manager requests: branch tab
   rStatus: "all",   // manager requests: status tab (all | done | open)
   statMonth: null,  // branches tab: "YYYY-MM", set to current month on first view
+  bStatus: "all",   // branch problems: status tab (all | open | done)
+  bqStatus: "all",  // branch requests: status tab (all | open | done)
 };
 
 async function api(path, opts = {}) {
@@ -388,17 +394,7 @@ function card(item, actionsHtml, extraChips) {
     `</div>`;
 }
 
-const actionBtn = (item, status, label, cls) =>
-  `<button class="btn ${cls || ""}" data-act="${item.id}|${status}">${label}</button>`;
-
 function bindHandlers() {
-  document.querySelectorAll("[data-act]").forEach((b) => {
-    b.onclick = (e) => {
-      e.stopPropagation();
-      const [id, status] = b.getAttribute("data-act").split("|");
-      setStatus(id, status, t("saved"));
-    };
-  });
   document.querySelectorAll("[data-btab]").forEach((b) => {
     b.onclick = () => { state.mBranch = b.getAttribute("data-btab"); renderApp(); };
   });
@@ -417,18 +413,26 @@ function bindHandlers() {
   document.querySelectorAll("[data-ropen]").forEach((b) => {
     b.onclick = () => openReqModal(b.getAttribute("data-ropen"));
   });
+  document.querySelectorAll("[data-bstab]").forEach((b) => {
+    b.onclick = () => { state.bStatus = b.getAttribute("data-bstab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-bqstab]").forEach((b) => {
+    b.onclick = () => { state.bqStatus = b.getAttribute("data-bqstab"); renderApp(); };
+  });
+  document.querySelectorAll("[data-bopen]").forEach((b) => {
+    b.onclick = () => openBranchTaskModal(b.getAttribute("data-bopen"));
+  });
+  document.querySelectorAll("[data-bqopen]").forEach((b) => {
+    b.onclick = () => openBranchReqModal(b.getAttribute("data-bqopen"));
+  });
   const at = el("addTaskBtn");
   if (at) at.onclick = openAddTaskModal;
+  const ar = el("addReqBtn");
+  if (ar) ar.onclick = openAddRequestModal;
   const ms = el("monthSel");
   if (ms) ms.onchange = () => { state.statMonth = ms.value; renderApp(); };
   bindChartTips();
-  let f;
-  if ((f = el("newRequest"))) f.onsubmit = submitNewRequest;
 }
-
-const section = (title, items, renderOne) =>
-  `<div class="sec">${title} (${items.length})</div>` +
-  (items.length ? items.map(renderOne).join("") : `<div class="empty">${t("nothing")}</div>`);
 
 const logSection = (title, items, renderOne) =>
   `<details class="log"><summary>${title} (${items.length})</summary>` +
@@ -517,19 +521,23 @@ function openTaskModal(id) {
   }
 }
 
-function confirmSolve(id) {
+// Generic Yes/No confirmation; "No" goes back via backFn.
+function confirmModal(question, yesFn, backFn) {
   openModal(
-    `<h3>${t("confirmSolved")}</h3>
+    `<h3>${question}</h3>
      <div class="row" style="margin-top:16px">
        <button class="btn primary" id="cYes">${t("yes")}</button>
        <button class="btn" id="cNo">${t("no")}</button>
      </div>`
   );
-  el("cYes").onclick = () => {
-    closeModal();
-    setStatus(id, "closed", t("solvedToast"));
-  };
-  el("cNo").onclick = () => openTaskModal(id);
+  el("cYes").onclick = () => { closeModal(); yesFn(); };
+  el("cNo").onclick = backFn;
+}
+
+function confirmSolve(id) {
+  confirmModal(t("confirmSolved"),
+    () => setStatus(id, "closed", t("solvedToast")),
+    () => openTaskModal(id));
 }
 
 function openAddTaskModal() {
@@ -771,43 +779,163 @@ function bindChartTips() {
 }
 
 // ---------------- branch views ----------------
+// Same format as the manager's screens: status tabs with counts, clickable
+// cards (✓ button on the ones needing this branch's action), action windows
+// with Yes/No confirm on the irreversible step, logs below.
+
+function branchStatusChip(item) {
+  return item.status === "done"
+    ? `<span class="chip ok">${t("doneStatus")}</span>`
+    : `<span class="chip warn">${t("todoChip")}</span>`;
+}
+
+function branchTaskCard(item) {
+  const check = item.status === "open" ? `<button class="checkbtn">✓</button>` : "";
+  return `<div class="card click" data-bopen="${item.id}">
+    <div class="cardrow">
+      <div class="grow">
+        <div>${branchStatusChip(item)}${deadlineChip(item)}</div>
+        <h3>${esc(item.title)}</h3>
+        ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
+        <div class="meta">${metaLine(item)}</div>
+      </div>
+      ${check}
+    </div>
+  </div>`;
+}
 
 function viewBranchTodo() {
-  const items = state.items.filter((i) => i.kind === "problem");
-  const todo = items.filter((i) => i.status === "open");
-  const waiting = items.filter((i) => i.status === "done");
-  const solved = items.filter((i) => i.status === "closed");
-  return section(t("todoFrom"), todo, (i) =>
-      card(i, actionBtn(i, "done", t("doneBtn"), "primary"),
-        `<span class="chip warn">${t("todoChip")}</span>`)) +
-    section(t("waitingCheck"), waiting, (i) =>
-      card(i, "", `<span class="chip amber">${t("waitCheckChip")}</span>`)) +
+  const probs = state.items.filter((i) => i.kind === "problem");
+  const active = probs.filter((i) => i.status !== "closed");
+  const nOpen = active.filter((i) => i.status === "open").length;
+  const sTabs = [
+    ["all", t("all"), active.length],
+    ["open", t("todoChip"), nOpen],
+    ["done", t("doneStatus"), active.length - nOpen],
+  ];
+  const statusTabsHtml = `<div class="stabs">` + sTabs.map(([k, label, n]) =>
+    `<button data-bstab="${k}" class="${state.bStatus === k ? "on" : ""}">${label} (${n})</button>`
+  ).join("") + `</div>`;
+
+  const shown = active.filter((i) => state.bStatus === "all" || i.status === state.bStatus);
+  const list = shown.length ? shown.map(branchTaskCard).join("") : `<div class="empty">${t("nothing")}</div>`;
+  const solved = probs.filter((i) => i.status === "closed");
+
+  return statusTabsHtml + list +
     logSection(t("solvedLog"), solved, (i) =>
       card(i, "", `<span class="chip ok">${t("solvedChip")}</span>`));
 }
 
+function openBranchTaskModal(id) {
+  const i = state.items.find((x) => x.id === id);
+  if (!i) return;
+  const isOpen = i.status === "open";
+  openModal(
+    `<div>${branchStatusChip(i)}${deadlineChip(i)}</div>` +
+    `<h3>${esc(i.title)}</h3>` +
+    (i.details ? `<p class="details">${esc(i.details)}</p>` : "") +
+    `<div class="meta">${metaLine(i)}</div>` +
+    (isOpen
+      ? `<div class="row" style="margin-top:16px">
+           <button class="btn primary" id="bDone">${t("doneBtn")}</button>
+         </div>`
+      : `<div class="meta" style="margin-top:14px">${t("waitingCheck")}</div>`)
+  );
+  if (isOpen) {
+    el("bDone").onclick = () =>
+      confirmModal(t("confirmDone"),
+        () => setStatus(id, "done", t("waitingCheck")),
+        () => openBranchTaskModal(id));
+  }
+}
+
+function branchReqChip(item) {
+  return item.status === "done"
+    ? `<span class="chip ok">${t("providedChip")}</span>`
+    : `<span class="chip">${t("waitMgrChip")}</span>`;
+}
+
+function branchReqCard(item) {
+  const check = item.status === "done" ? `<button class="checkbtn">✓</button>` : "";
+  return `<div class="card click" data-bqopen="${item.id}">
+    <div class="cardrow">
+      <div class="grow">
+        <div>${branchReqChip(item)}${deadlineChip(item)}</div>
+        <h3>${esc(item.title)}</h3>
+        ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
+        <div class="meta">${metaLine(item)}</div>
+      </div>
+      ${check}
+    </div>
+  </div>`;
+}
+
 function viewBranchAsks() {
-  const items = state.items.filter((i) => i.kind === "request");
-  const open = items.filter((i) => i.status === "open");
-  const provided = items.filter((i) => i.status === "done");
-  const closed = items.filter((i) => i.status === "closed");
-  const form = `
-    <form class="panel" id="newRequest"><strong>${t("askTitle")}</strong>
-      <label>${t("whatNeed")}</label><input id="rTitle" required maxlength="200">
-      <label>${t("detailsOpt")}</label><textarea id="rDetails"></textarea>
-      <label>${t("neededBy")}</label><input id="rDeadline" type="date">
-      <div style="margin-top:12px"><button class="btn primary" type="submit">${t("sendRequest")}</button></div>
-    </form>`;
-  return form +
-    section(t("waitingManager"), open, (i) =>
-      card(i, "", `<span class="chip">${t("sentChip")}</span>`)) +
-    section(t("providedQ"), provided, (i) =>
-      card(i,
-        actionBtn(i, "closed", t("receivedBtn"), "primary") +
-        actionBtn(i, "open", t("notReceived"), "danger"),
-        `<span class="chip amber">${t("checkChip")}</span>`)) +
+  const reqs = state.items.filter((i) => i.kind === "request");
+  const active = reqs.filter((i) => i.status !== "closed");
+  const nOpen = active.filter((i) => i.status === "open").length;
+  const sTabs = [
+    ["all", t("all"), active.length],
+    ["open", t("waitMgrChip"), nOpen],
+    ["done", t("providedChip"), active.length - nOpen],
+  ];
+  const statusTabsHtml = `<div class="stabs">` + sTabs.map(([k, label, n]) =>
+    `<button data-bqstab="${k}" class="${state.bqStatus === k ? "on" : ""}">${label} (${n})</button>`
+  ).join("") + `</div>`;
+
+  const shown = active.filter((i) => state.bqStatus === "all" || i.status === state.bqStatus);
+  const list = shown.length ? shown.map(branchReqCard).join("") : `<div class="empty">${t("nothing")}</div>`;
+  const closed = reqs.filter((i) => i.status === "closed");
+
+  return `<div class="row" style="margin-bottom:14px">
+      <button class="btn primary" id="addReqBtn">${t("addRequest")}</button>
+    </div>` +
+    statusTabsHtml + list +
     logSection(t("completedLog"), closed, (i) =>
       card(i, "", `<span class="chip ok">${t("completedChip")}</span>`));
+}
+
+function openBranchReqModal(id) {
+  const i = state.items.find((x) => x.id === id);
+  if (!i) return;
+  const isProvided = i.status === "done";
+  openModal(
+    `<div>${branchReqChip(i)}${deadlineChip(i)}</div>` +
+    `<h3>${esc(i.title)}</h3>` +
+    (i.details ? `<p class="details">${esc(i.details)}</p>` : "") +
+    `<div class="meta">${metaLine(i)}</div>` +
+    (isProvided
+      ? `<div class="row" style="margin-top:16px">
+           <button class="btn primary" id="bRecv">${t("receivedBtn")}</button>
+           <button class="btn danger" id="bNotRecv">${t("notReceived")}</button>
+         </div>`
+      : `<div class="meta" style="margin-top:14px">${t("waitingManager")}</div>`)
+  );
+  if (isProvided) {
+    el("bRecv").onclick = () =>
+      confirmModal(t("confirmReceived"),
+        () => setStatus(id, "closed", t("receivedToast")),
+        () => openBranchReqModal(id));
+    el("bNotRecv").onclick = () => {
+      closeModal();
+      setStatus(id, "open", t("notReceivedToast"));
+    };
+  }
+}
+
+function openAddRequestModal() {
+  openModal(
+    `<h3>${t("askTitle")}</h3>
+     <form id="newRequest">
+       <label>${t("whatNeed")}</label><input id="rTitle" required maxlength="200">
+       <label>${t("detailsOpt")}</label><textarea id="rDetails"></textarea>
+       <label>${t("neededBy")}</label><input id="rDeadline" type="date" value="${todayStr()}">
+       <div style="margin-top:14px">
+         <button class="btn primary" style="width:100%" type="submit">${t("sendRequest")}</button>
+       </div>
+     </form>`
+  );
+  el("newRequest").onsubmit = submitNewRequest;
 }
 
 function submitNewRequest(e) {
@@ -821,7 +949,7 @@ function submitNewRequest(e) {
       details: el("rDetails").value,
       deadline: el("rDeadline").value || null,
     }),
-  }).then(() => { toast(t("requestSent")); loadApp(); })
+  }).then(() => { closeModal(); toast(t("requestSent")); loadApp(); })
     .catch((err) => toast(err.message));
 }
 
