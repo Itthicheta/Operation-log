@@ -133,12 +133,12 @@ const STR = {
     postToBranch: "ส่งให้สาขา", postedToast: "ส่งให้สาขาแล้ว",
     solvedLog: "บันทึกงานที่แก้ไขแล้ว", completedLog: "บันทึกที่เสร็จสิ้น",
     solvedChip: "แก้ไขแล้ว", completedChip: "เสร็จสิ้น",
-    providedChip: "จัดให้แล้ว", providedToast: "บันทึกว่าจัดให้แล้ว",
+    providedChip: "จัดการแล้ว", providedToast: "บันทึกว่าจัดการแล้ว",
     nothing: "ไม่มีรายการ", empty: "ว่าง",
     deadline: "กำหนด", overdue: "เกินกำหนด",
     posted: "สร้างเมื่อ", tickedOn: "ติ๊กเมื่อ", closedOn: "ปิดเมื่อ",
-    needsYou: "รอคุณจัดการ", providedBtn: "จัดให้แล้ว ✓",
-    waitConfirm: "จัดให้แล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
+    needsYou: "รอคุณจัดการ", providedBtn: "จัดการแล้ว ✓",
+    waitConfirm: "จัดการแล้ว — รอสาขายืนยัน", waitingChip: "รอ", waitingConfChip: "รอยืนยัน",
     branchesCount: "สาขา", activeItems: "รายการที่ยังไม่เสร็จ",
     total: "รวม", chartTitle: "จำนวนรวมต่อสาขา",
     todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
@@ -304,7 +304,7 @@ async function loadApp() {
     state.profile = d.profile;
     state.branches = d.branches;
     state.items = d.items;
-    if (!state.tab) state.tab = state.profile.role === "area_manager" ? "problems" : "todo";
+    if (!state.tab) state.tab = state.profile.role === "area_manager" ? "problems" : "asks";
     renderApp();
   } catch (e) {
     if (state.profile) toast(e.message);
@@ -336,7 +336,7 @@ function renderApp() {
   const isMgr = p.role === "area_manager";
   const tabs = isMgr
     ? [["problems", t("tasksForBranches")], ["requests", t("branchRequests")], ["branches", t("branchesTab")]]
-    : [["todo", t("fromManager")], ["asks", t("ourRequests")]];
+    : [["asks", t("ourRequests")], ["todo", t("fromManager")]];
   const views = {
     problems: viewMgrProblems, requests: viewMgrRequests, branches: viewMgrBranches,
     todo: viewBranchTodo, asks: viewBranchAsks,
