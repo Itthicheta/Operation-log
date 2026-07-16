@@ -131,3 +131,10 @@ were touched. See `CLAUDE.md` for the rules.
   where done = closed), and a grouped bar chart of monthly totals per branch (tasks
   `#2a78d6`, requests `#008300` — CVD-validated pair; inline SVG, hover tooltips).
   Verified with a mock-data screenshot at phone width.
+- **2026-07-16** — Branch side now mirrors the manager format. "From area manager":
+  status tabs All/To-do/Done with counts, clickable cards (✓ on to-do items), task
+  window with Done ✓ (Yes/No confirm — it's irreversible for the branch) or a
+  waiting-for-check note. "Our requests": "+ Add request" modal (needed-by pre-filled
+  today), status tabs All/Waiting/Provided, provided cards open a window with
+  Received ✓ (confirm) / Not received (sends back). Old inline forms/sections removed;
+  verified with mock-data screenshots of both tabs.
