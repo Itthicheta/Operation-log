@@ -150,3 +150,13 @@ were touched. See `CLAUDE.md` for the rules.
   Category colors are a CVD-validated 6-set (marketing #2a78d6, preorder #008300,
   event #e87ba4, repair #eda100, pest #4a3aa7, other #1baf7a) always paired with the
   category name in text. Verified with mock-data screenshots of both views.
+- **2026-07-16** — Comments + editing (owner-approved plan). New
+  `operation_log.item_comments` table (append-only; visibility mirrors the item;
+  commenting blocked once the item is closed). Profiles select policy widened to all
+  authenticated users so comment authors' display names render on both sides. Items
+  trigger relaxed: creator may edit title/details/deadline until the item closes
+  (previously only while open). Edge function v4: comments in /api/data, POST
+  /api/items/:id/comments, POST /api/items/:id/edit. Frontend: every task/request
+  window has a named comment thread + input (both roles); manager gets an Edit button
+  on her tasks (any active status), branch gets Edit on its own still-waiting
+  requests; cards show a 💬 count badge. Verified with a mock-data screenshot.

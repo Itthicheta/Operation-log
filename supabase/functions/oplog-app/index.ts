@@ -130,9 +130,46 @@ async function handleApi(req: Request, path: string): Promise<Response> {
         from operation_log.events e
         join operation_log.branches b on b.id = e.branch_id
         order by e.event_date, e.created_at`;
-      return { branches, items, events };
+      const comments = await tx`
+        select c.id, c.item_id, c.body, c.created_at, p.display_name as author_name
+        from operation_log.item_comments c
+        join operation_log.profiles p on p.user_id = c.author
+        order by c.created_at`;
+      return { branches, items, events, comments };
     });
     return json({ profile, ...result });
+  }
+
+  const commentMatch = path.match(/^\/api\/items\/([0-9a-f-]{36})\/comments$/);
+  if (method === "POST" && commentMatch) {
+    const { body } = await req.json();
+    if (!body?.trim()) return json({ error: "A comment is required." }, 400);
+    try {
+      const rows = await asUser(caller.id, (tx) => tx`
+        insert into operation_log.item_comments (item_id, body)
+        values (${commentMatch[1]}, ${body.trim()})
+        returning id, item_id, body, created_at`);
+      return json({ comment: { ...rows[0], author_name: profile.display_name } });
+    } catch (e) {
+      return json({ error: pgError(e) }, 400);
+    }
+  }
+
+  const editMatch = path.match(/^\/api\/items\/([0-9a-f-]{36})\/edit$/);
+  if (method === "POST" && editMatch) {
+    const { title, details, deadline } = await req.json();
+    if (!title?.trim()) return json({ error: "A title is required." }, 400);
+    try {
+      const rows = await asUser(caller.id, (tx) => tx`
+        update operation_log.items
+        set title = ${title.trim()}, details = ${details || null}, deadline = ${deadline || null}
+        where id = ${editMatch[1]}
+        returning *`);
+      if (rows.length === 0) return json({ error: "Item not found." }, 404);
+      return json({ item: rows[0] });
+    } catch (e) {
+      return json({ error: pgError(e) }, 400);
+    }
   }
 
   if (method === "POST" && path === "/api/events") {
