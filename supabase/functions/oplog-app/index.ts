@@ -155,6 +155,20 @@ async function handleApi(req: Request, path: string): Promise<Response> {
     }
   }
 
+  const deleteMatch = path.match(/^\/api\/items\/([0-9a-f-]{36})\/delete$/);
+  if (method === "POST" && deleteMatch) {
+    try {
+      const rows = await asUser(caller.id, (tx) => tx`
+        delete from operation_log.items
+        where id = ${deleteMatch[1]}
+        returning id`);
+      if (rows.length === 0) return json({ error: "Item not found or cannot be deleted." }, 404);
+      return json({ ok: true });
+    } catch (e) {
+      return json({ error: pgError(e) }, 400);
+    }
+  }
+
   const editMatch = path.match(/^\/api\/items\/([0-9a-f-]{36})\/edit$/);
   if (method === "POST" && editMatch) {
     const { title, details, deadline } = await req.json();
