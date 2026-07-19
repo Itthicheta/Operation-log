@@ -160,3 +160,10 @@ were touched. See `CLAUDE.md` for the rules.
   window has a named comment thread + input (both roles); manager gets an Edit button
   on her tasks (any active status), branch gets Edit on its own still-waiting
   requests; cards show a 💬 count badge. Verified with a mock-data screenshot.
+- **2026-07-16** — Delete for creators. Migration `items_delete`: RLS delete policy —
+  only the creator, only while the item is still active (closed log items can never be
+  deleted); delete cascades to the item's events and comments. Edge function v5: POST
+  /api/items/:id/delete. UI: ลบ (Delete) button with Yes/No confirm in the manager's
+  task window and the branch's own still-waiting request window. Verified with a
+  3-assertion rollback SQL test (branch can't delete manager's item; creator can;
+  closed items can't be deleted).

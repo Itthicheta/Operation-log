@@ -173,6 +173,9 @@ const STR = {
     noComments: "ยังไม่มีความคิดเห็น",
     edit: "แก้ไข", editTask: "แก้ไขงาน", editRequest: "แก้ไขคำขอ",
     saveChanges: "บันทึกการแก้ไข", editedToast: "บันทึกการแก้ไขแล้ว",
+    deleteBtn: "ลบ",
+    confirmDelete: "ยืนยันลบรายการนี้? ความคิดเห็นทั้งหมดจะถูกลบไปด้วย",
+    deletedToast: "ลบแล้ว",
     todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
     waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ",
     confirmDone: "ยืนยันว่าทำงานนี้เสร็จแล้ว?",
@@ -225,6 +228,9 @@ const STR = {
     noComments: "No comments yet.",
     edit: "Edit", editTask: "Edit task", editRequest: "Edit request",
     saveChanges: "Save changes", editedToast: "Changes saved.",
+    deleteBtn: "Delete",
+    confirmDelete: "Confirm deleting this item? All its comments will be deleted too.",
+    deletedToast: "Deleted.",
     todoChip: "To do", doneBtn: "Done ✓",
     waitingCheck: "Ticked — waiting for the manager to check",
     confirmDone: "Confirm this task is done?",
@@ -588,6 +594,7 @@ function openTaskModal(id) {
       <button class="btn primary" id="mSolve">${t("solvedBtn")}</button>
       ${isDone ? `<button class="btn danger" id="mRecheck">${t("recheck")}</button>` : ""}
       <button class="btn" id="mEdit">${t("edit")}</button>
+      <button class="btn danger" id="mDelete">${t("deleteBtn")}</button>
     </div>` +
     commentSection(i)
   );
@@ -599,7 +606,17 @@ function openTaskModal(id) {
     };
   }
   el("mEdit").onclick = () => openEditItemModal(id, () => openTaskModal(id));
+  el("mDelete").onclick = () =>
+    confirmModal(t("confirmDelete"),
+      () => deleteItem(id),
+      () => openTaskModal(id));
   bindCommentForm(() => openTaskModal(id));
+}
+
+function deleteItem(id) {
+  api("/api/items/" + id + "/delete", { method: "POST" })
+    .then(() => { toast(t("deletedToast")); loadApp(); })
+    .catch((e) => toast(e.message));
 }
 
 // Generic Yes/No confirmation; "No" goes back via backFn.
@@ -1311,6 +1328,7 @@ function openBranchReqModal(id) {
          </div>`
       : `<div class="row" style="margin-top:16px">
            <button class="btn" id="bEditReq">${t("edit")}</button>
+           <button class="btn danger" id="bDelReq">${t("deleteBtn")}</button>
          </div>
          <div class="meta" style="margin-top:8px">${t("waitingManager")}</div>`) +
     commentSection(i)
@@ -1326,6 +1344,10 @@ function openBranchReqModal(id) {
     };
   } else {
     el("bEditReq").onclick = () => openEditItemModal(id, () => openBranchReqModal(id));
+    el("bDelReq").onclick = () =>
+      confirmModal(t("confirmDelete"),
+        () => deleteItem(id),
+        () => openBranchReqModal(id));
   }
   bindCommentForm(() => openBranchReqModal(id));
 }
