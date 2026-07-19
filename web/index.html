@@ -594,7 +594,7 @@ function openTaskModal(id) {
       <button class="btn primary" id="mSolve">${t("solvedBtn")}</button>
       ${isDone ? `<button class="btn danger" id="mRecheck">${t("recheck")}</button>` : ""}
       <button class="btn" id="mEdit">${t("edit")}</button>
-      <button class="btn danger" id="mDelete">${t("deleteBtn")}</button>
+      ${isDone ? "" : `<button class="btn danger" id="mDelete">${t("deleteBtn")}</button>`}
     </div>` +
     commentSection(i)
   );
@@ -604,12 +604,13 @@ function openTaskModal(id) {
       closeModal();
       setStatus(id, "open", t("recheckToast"));
     };
+  } else {
+    el("mDelete").onclick = () =>
+      confirmModal(t("confirmDelete"),
+        () => deleteItem(id),
+        () => openTaskModal(id));
   }
   el("mEdit").onclick = () => openEditItemModal(id, () => openTaskModal(id));
-  el("mDelete").onclick = () =>
-    confirmModal(t("confirmDelete"),
-      () => deleteItem(id),
-      () => openTaskModal(id));
   bindCommentForm(() => openTaskModal(id));
 }
 

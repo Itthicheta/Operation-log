@@ -167,3 +167,8 @@ were touched. See `CLAUDE.md` for the rules.
   task window and the branch's own still-waiting request window. Verified with a
   3-assertion rollback SQL test (branch can't delete manager's item; creator can;
   closed items can't be deleted).
+- **2026-07-16** — Delete tightened (owner's request): once the other side has acted
+  (branch ticked a task / manager provided a request) the item can no longer be
+  deleted — delete now only applies while status is 'open'. Migration
+  `delete_only_open`; manager's task window hides ลบ once the branch has ticked.
+  Verified with a rollback SQL test.
