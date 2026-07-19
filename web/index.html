@@ -97,6 +97,10 @@
   .dot { display:inline-block; width:9px; height:9px; border-radius:50%;
          margin-right:5px; flex:none; }
   .chip .dot { vertical-align:-1px; }
+  .cmt { border-top:1px solid var(--line); padding:8px 2px; }
+  .cmt .cname { font-weight:600; font-size:13px; margin-right:8px; }
+  .cmt .ctime { color:var(--muted); font-size:12px; }
+  .cmt .cbody { font-size:14px; white-space:pre-wrap; margin-top:2px; }
   .overlay { position:fixed; inset:0; background:rgba(20,28,36,.5); display:flex;
              align-items:center; justify-content:center; z-index:50; padding:16px; }
   .modal { background:var(--card); border-radius:14px; padding:18px; width:100%;
@@ -165,6 +169,10 @@ const STR = {
     cat_marketing: "Marketing", cat_preorder: "สั่งล่วงหน้า", cat_event: "Event",
     cat_repair: "ซ่อม", cat_pest: "แมลง", cat_other: "อื่นๆ",
     days: ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"],
+    comments: "ความคิดเห็น", writeComment: "เขียนความคิดเห็น…", send: "ส่ง",
+    noComments: "ยังไม่มีความคิดเห็น",
+    edit: "แก้ไข", editTask: "แก้ไขงาน", editRequest: "แก้ไขคำขอ",
+    saveChanges: "บันทึกการแก้ไข", editedToast: "บันทึกการแก้ไขแล้ว",
     todoChip: "ต้องทำ", doneBtn: "เสร็จแล้ว ✓",
     waitingCheck: "ติ๊กแล้ว — รอผู้จัดการตรวจ",
     confirmDone: "ยืนยันว่าทำงานนี้เสร็จแล้ว?",
@@ -213,6 +221,10 @@ const STR = {
     cat_marketing: "Marketing", cat_preorder: "Pre-order", cat_event: "Event",
     cat_repair: "Repair", cat_pest: "Pest control", cat_other: "Other",
     days: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    comments: "Comments", writeComment: "Write a comment…", send: "Send",
+    noComments: "No comments yet.",
+    edit: "Edit", editTask: "Edit task", editRequest: "Edit request",
+    saveChanges: "Save changes", editedToast: "Changes saved.",
     todoChip: "To do", doneBtn: "Done ✓",
     waitingCheck: "Ticked — waiting for the manager to check",
     confirmDone: "Confirm this task is done?",
@@ -342,6 +354,7 @@ async function loadApp() {
     state.branches = d.branches;
     state.items = d.items;
     state.events = d.events || [];
+    state.comments = d.comments || [];
     if (!state.tab) state.tab = state.profile.role === "area_manager" ? "problems" : "asks";
     renderApp();
   } catch (e) {
@@ -516,7 +529,7 @@ function mgrTaskCard(item) {
   return `<div class="card click" data-open="${item.id}">
     <div class="cardrow">
       <div class="grow">
-        <div><span class="chip branch">${esc(item.branch_name)}</span>${mgrStatusChip(item)}${deadlineChip(item)}</div>
+        <div><span class="chip branch">${esc(item.branch_name)}</span>${mgrStatusChip(item)}${deadlineChip(item)}${cmtBadge(item.id)}</div>
         <h3>${esc(item.title)}</h3>
         ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
         <div class="meta">${metaLine(item)}</div>
@@ -574,7 +587,9 @@ function openTaskModal(id) {
     `<div class="row" style="margin-top:16px">
       <button class="btn primary" id="mSolve">${t("solvedBtn")}</button>
       ${isDone ? `<button class="btn danger" id="mRecheck">${t("recheck")}</button>` : ""}
-    </div>`
+      <button class="btn" id="mEdit">${t("edit")}</button>
+    </div>` +
+    commentSection(i)
   );
   el("mSolve").onclick = () => confirmSolve(id);
   if (isDone) {
@@ -583,6 +598,8 @@ function openTaskModal(id) {
       setStatus(id, "open", t("recheckToast"));
     };
   }
+  el("mEdit").onclick = () => openEditItemModal(id, () => openTaskModal(id));
+  bindCommentForm(() => openTaskModal(id));
 }
 
 // Generic Yes/No confirmation; "No" goes back via backFn.
@@ -602,6 +619,94 @@ function confirmSolve(id) {
   confirmModal(t("confirmSolved"),
     () => setStatus(id, "closed", t("solvedToast")),
     () => openTaskModal(id));
+}
+
+// ---------------- comments + editing (shared) ----------------
+
+function itemComments(itemId) {
+  return (state.comments || []).filter((c) => c.item_id === itemId);
+}
+
+function cmtBadge(itemId) {
+  const n = itemComments(itemId).length;
+  return n ? `<span class="chip">💬 ${n}</span>` : "";
+}
+
+// Comment thread for an item's window. Commenting is open to both sides while
+// the item is active; closed items show the frozen thread only.
+function commentSection(item) {
+  const cs = itemComments(item.id);
+  const list = cs.length
+    ? cs.map((c) =>
+        `<div class="cmt"><span class="cname">${esc(c.author_name)}</span>` +
+        `<span class="ctime">${fmtDate(c.created_at)}</span>` +
+        `<div class="cbody">${esc(c.body)}</div></div>`).join("")
+    : `<div class="empty">${t("noComments")}</div>`;
+  const form = item.status === "closed" ? "" :
+    `<form id="cmtForm" data-item="${item.id}">
+       <div style="display:flex;gap:8px;margin-top:10px">
+         <input id="cmtBody" placeholder="${t("writeComment")}" maxlength="500" required
+                style="flex:1;width:auto">
+         <button class="btn primary" type="submit">${t("send")}</button>
+       </div>
+     </form>`;
+  return `<div class="sec" style="margin-top:18px">${t("comments")} (${cs.length})</div>` +
+    list + form;
+}
+
+function bindCommentForm(reopen) {
+  const f = el("cmtForm");
+  if (!f) return;
+  f.onsubmit = (ev) => {
+    ev.preventDefault();
+    const body = el("cmtBody").value.trim();
+    if (!body) return;
+    api("/api/items/" + f.getAttribute("data-item") + "/comments", {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }).then((res) => {
+      state.comments.push(res.comment);
+      reopen();
+      loadApp();
+    }).catch((e) => toast(e.message));
+  };
+}
+
+// Edit window for an item's title/details/deadline (creator only — the
+// database enforces it; the UI only offers the button to the creator).
+function openEditItemModal(id, reopen) {
+  const i = state.items.find((x) => x.id === id);
+  if (!i) return;
+  const isProblem = i.kind === "problem";
+  openModal(
+    `<h3>${isProblem ? t("editTask") : t("editRequest")}</h3>
+     <form id="editForm">
+       <label>${isProblem ? t("whatProblem") : t("whatNeed")}</label>
+       <input id="edTitle" required maxlength="200" value="${esc(i.title)}">
+       <label>${t("detailsOpt")}</label><textarea id="edDetails">${esc(i.details || "")}</textarea>
+       <label>${isProblem ? t("deadlineLabel") : t("neededBy")}</label>
+       <input id="edDeadline" type="date" value="${fmtDate(i.deadline)}">
+       <div style="margin-top:14px">
+         <button class="btn primary" style="width:100%" type="submit">${t("saveChanges")}</button>
+       </div>
+     </form>`);
+  el("editForm").onsubmit = (ev) => {
+    ev.preventDefault();
+    api("/api/items/" + id + "/edit", {
+      method: "POST",
+      body: JSON.stringify({
+        title: el("edTitle").value,
+        details: el("edDetails").value,
+        deadline: el("edDeadline").value || null,
+      }),
+    }).then((res) => {
+      const idx = state.items.findIndex((x) => x.id === id);
+      if (idx >= 0) state.items[idx] = { ...state.items[idx], ...res.item };
+      reopen();
+      toast(t("editedToast"));
+      loadApp();
+    }).catch((e) => toast(e.message));
+  };
 }
 
 function openAddTaskModal() {
@@ -655,7 +760,7 @@ function mgrReqCard(item) {
   return `<div class="card click" data-ropen="${item.id}">
     <div class="cardrow">
       <div class="grow">
-        <div><span class="chip branch">${esc(item.branch_name)}</span>${reqStatusChip(item)}${deadlineChip(item)}</div>
+        <div><span class="chip branch">${esc(item.branch_name)}</span>${reqStatusChip(item)}${deadlineChip(item)}${cmtBadge(item.id)}</div>
         <h3>${esc(item.title)}</h3>
         ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
         <div class="meta">${metaLine(item)}</div>
@@ -711,7 +816,8 @@ function openReqModal(id) {
       ? `<div class="row" style="margin-top:16px">
            <button class="btn primary" id="mProvide">${t("providedBtn")}</button>
          </div>`
-      : `<div class="meta" style="margin-top:14px">${t("waitConfirm")}</div>`)
+      : `<div class="meta" style="margin-top:14px">${t("waitConfirm")}</div>`) +
+    commentSection(i)
   );
   if (isOpen) {
     el("mProvide").onclick = () => {
@@ -719,6 +825,7 @@ function openReqModal(id) {
       setStatus(id, "done", t("providedToast"));
     };
   }
+  bindCommentForm(() => openReqModal(id));
 }
 
 // ---------------- manager: branches dashboard ----------------
@@ -1085,7 +1192,7 @@ function branchTaskCard(item) {
   return `<div class="card click" data-bopen="${item.id}">
     <div class="cardrow">
       <div class="grow">
-        <div>${branchStatusChip(item)}${deadlineChip(item)}</div>
+        <div>${branchStatusChip(item)}${deadlineChip(item)}${cmtBadge(item.id)}</div>
         <h3>${esc(item.title)}</h3>
         ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
         <div class="meta">${metaLine(item)}</div>
@@ -1130,7 +1237,8 @@ function openBranchTaskModal(id) {
       ? `<div class="row" style="margin-top:16px">
            <button class="btn primary" id="bDone">${t("doneBtn")}</button>
          </div>`
-      : `<div class="meta" style="margin-top:14px">${t("waitingCheck")}</div>`)
+      : `<div class="meta" style="margin-top:14px">${t("waitingCheck")}</div>`) +
+    commentSection(i)
   );
   if (isOpen) {
     el("bDone").onclick = () =>
@@ -1138,6 +1246,7 @@ function openBranchTaskModal(id) {
         () => setStatus(id, "done", t("waitingCheck")),
         () => openBranchTaskModal(id));
   }
+  bindCommentForm(() => openBranchTaskModal(id));
 }
 
 function branchReqChip(item) {
@@ -1151,7 +1260,7 @@ function branchReqCard(item) {
   return `<div class="card click" data-bqopen="${item.id}">
     <div class="cardrow">
       <div class="grow">
-        <div>${branchReqChip(item)}${deadlineChip(item)}</div>
+        <div>${branchReqChip(item)}${deadlineChip(item)}${cmtBadge(item.id)}</div>
         <h3>${esc(item.title)}</h3>
         ${item.details ? `<p class="details">${esc(item.details)}</p>` : ""}
         <div class="meta">${metaLine(item)}</div>
@@ -1200,7 +1309,11 @@ function openBranchReqModal(id) {
            <button class="btn primary" id="bRecv">${t("receivedBtn")}</button>
            <button class="btn danger" id="bNotRecv">${t("notReceived")}</button>
          </div>`
-      : `<div class="meta" style="margin-top:14px">${t("waitingManager")}</div>`)
+      : `<div class="row" style="margin-top:16px">
+           <button class="btn" id="bEditReq">${t("edit")}</button>
+         </div>
+         <div class="meta" style="margin-top:8px">${t("waitingManager")}</div>`) +
+    commentSection(i)
   );
   if (isProvided) {
     el("bRecv").onclick = () =>
@@ -1211,7 +1324,10 @@ function openBranchReqModal(id) {
       closeModal();
       setStatus(id, "open", t("notReceivedToast"));
     };
+  } else {
+    el("bEditReq").onclick = () => openEditItemModal(id, () => openBranchReqModal(id));
   }
+  bindCommentForm(() => openBranchReqModal(id));
 }
 
 function openAddRequestModal() {
